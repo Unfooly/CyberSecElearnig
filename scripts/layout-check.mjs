@@ -2675,7 +2675,7 @@ try {
   //  (p1) cały widoczny tekst ramki odtwarzacza ≥ 16 px (klasa .simple-mode);
   //  (p2) przyciski odpowiedzi i werdyktu ≥ 44 px, karta i zdanie po werdykcie w obszarze bloku, dolny pasek w ekranie, strona bez
   //       przewijania w poziomie, bez błędów strony i konsoli;
-  //  (p3) wybór: zła odpowiedź - „Nie tym razem” ze zdaniem, po 2 błędach podpowiedź, trafienie - „Dalej” aktywny;
+  //  (p3) wybór (D-204): zaznaczenie bez oceny, „Sprawdź” ≥ 44 px, jedna zła próba - „Nie tym razem”, zdanie i poprawna na zielono, „Dalej” aktywny;
   //  (p4) SWIPE_SORT przyciskami (pierwsze 3 karty) i gestem myszy (pozostałe, w lewo i w prawo wg treści): zdanie po każdej karcie,
   //       „Dalej” aktywny po ostatniej.
   // Odpowiedź /check podstawiona z treści modułu podglądu (harness nie ma backendu; id kart w harnessie są jawne).
@@ -2770,9 +2770,26 @@ try {
   //       (apps/web/src/lib/player-monitor.json) ±1,5 px względem obrazu monitora, monitor w obszarze bloku; wąsko: karta w ramce 10 px
   //       w obszarze bloku na przygaszonym monitorze (opacity 0,55);
   //  (q2) bez przewijania strony i obszaru bloku (przewija się tylko ekran), bez przepełnienia w poziomie w ekranie, tekst ≥ 16 px;
-  //  (q3) odpowiedzi ≥ 44 px, litery A, B, C… w kolejności;
-  //  (q4) zła odpowiedź: kolor i ✕ (nie litera), zdanie w ekranie (po przewinięciu ekranu - widoczne w jego obrysie);
-  //  (q5) trafienie: ✓, „Dalej” aktywny; (q6) brak błędów strony i konsoli.
+  //  (q3) odpowiedzi i „Sprawdź” ≥ 44 px, litery A, B, C… w kolejności;
+  //  (q4) zła odpowiedź po „Sprawdź” (D-204): kolor i ✕ (nie litera), zdanie w ekranie (po przewinięciu ekranu - widoczne w jego obrysie);
+  //  (q5) po tej jednej próbie poprawne odpowiedzi na zielono z ✓ i „Poprawna odpowiedź”, „Dalej” aktywny; (q6) brak błędów strony i konsoli.
+  /**
+   * Odpowiedź /check pytania quizu jak w API po D-204 (jedna próba rozstrzyga): werdykt, zdanie zaznaczonej (pojedynczy wybór) oraz oceny
+   * zaznaczonych i poprawnych niezaznaczonych (`picked`) - harness nie ma backendu. `block.options[].feedback` - tekst (już rozwinięty).
+   * KOPIA logiki `decidedView`/`evaluateCheck` z apps/api/src/courses/scoring/evaluate.ts - zmiana tam wymaga zmiany tutaj.
+   */
+  const quizCheckReply = (block, body) => {
+    const multi = Array.isArray(body.options);
+    const picked = multi ? body.options : [body.option];
+    const good = multi ? block.options.every((option, index) => (option.correct === true) === picked.includes(index)) : block.options[picked[0]].correct === true;
+    const options = block.options.flatMap((option, index) =>
+      picked.includes(index) || option.correct === true
+        ? [{ option: index, result: option.correct === true ? 'good' : 'bad', feedback: option.feedback, picked: picked.includes(index) }]
+        : [],
+    );
+    return { blockId: block.id, result: good ? 'good' : 'bad', feedback: multi ? '' : block.options[picked[0]].feedback, done: true, options };
+  };
+
   if (runs('monitor')) {
     const manifest = JSON.parse(readFileSync(join(process.cwd(), 'apps', 'web', 'src', 'lib', 'player-monitor.json'), 'utf8'));
     const MONITOR_CASES = [
@@ -2795,14 +2812,7 @@ try {
       let quiz;
       await page.route('**/api/courses/*/blocks/*/check', async (route) => {
         const body = JSON.parse(route.request().postData() ?? '{}');
-        if (Array.isArray(body.options)) {
-          const good = quiz.options.every((option, index) => (option.correct === true) === body.options.includes(index));
-          const options = body.options.map((index) => ({ option: index, result: quiz.options[index].correct ? 'good' : 'bad', feedback: quiz.options[index].feedback }));
-          await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ blockId: quiz.id, result: good ? 'good' : 'bad', feedback: '', options, done: good }) });
-          return;
-        }
-        const answer = quiz.options[body.option];
-        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ blockId: quiz.id, result: answer.correct ? 'good' : 'bad', feedback: answer.feedback, done: false }) });
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(quizCheckReply(quiz, body)) });
       });
       for (const testCase of MONITOR_CASES) {
         const label = `${viewport.name} / monitor / ${testCase.slug} ${testCase.block}${testCase.pseudo ? ' xx' : ''}`;
@@ -2892,36 +2902,30 @@ try {
           });
         const wrong = quiz.options.findIndex((option) => !option.correct);
         const rights = quiz.options.map((option, index) => (option.correct ? index : -1)).filter((index) => index >= 0);
-        if (quiz.multiple) {
-          await page.locator(optionSelector).nth(wrong).click();
-          await page.getByTestId('simple-multi-check').click();
-        } else {
-          await page.locator(optionSelector).nth(wrong).click();
-        }
+        // D-204: zaznaczenie i „Sprawdź” - jedna (zła) próba rozstrzyga pytanie.
+        await page.locator(optionSelector).nth(wrong).click();
+        const checkButton = page.getByTestId(quiz.multiple ? 'simple-multi-check' : 'simple-check');
+        const checkTarget = await checkButton.evaluate((el) => el.getBoundingClientRect().height);
+        if (checkTarget < 43.5) fail(`${label}: (q3) „Sprawdź” niższy niż 44 px (${checkTarget}).`);
+        await checkButton.click();
         await page.locator('[data-testid="simple-feedback"][data-result="bad"]').waitFor({ timeout: 10000 });
         await page.waitForTimeout(400); // płynne przewinięcie ekranu do zdania (bez reduced-motion byłoby animowane)
         const bad = await page.locator(optionSelector).nth(wrong).evaluate((el) => ({ result: el.dataset.result, mark: el.querySelector('[aria-hidden="true"]')?.textContent }));
         if (bad.result !== 'bad' || /[A-H]/.test(bad.mark ?? '')) fail(`${label}: (q4) zła odpowiedź bez oznaczenia ✕ (${JSON.stringify(bad)}).`);
         if (!(await visibleInScreen('[data-testid="simple-feedback"]'))) fail(`${label}: (q4) zdanie po odpowiedzi poza ekranem.`);
-        await shot(page, `${viewport.name}-monitor-${testCase.slug}${testCase.pseudo ? '-xx' : ''}-zle`);
-        if (quiz.multiple) {
-          await page.locator(optionSelector).nth(wrong).click();
-          for (const index of rights) await page.locator(optionSelector).nth(index).click();
-          await page.getByTestId('simple-multi-check').click();
-        } else {
-          await page.locator(optionSelector).nth(rights[0]).click();
-        }
-        await page.locator('[data-testid="simple-feedback"][data-result="good"]').waitFor({ timeout: 10000 });
+        // (q5) Po rozstrzygnięciu: poprawne (niezaznaczone) na zielono z ✓ i zdaniem, „Dalej” aktywny od razu.
         await page.waitForFunction(() => document.querySelector('.pbar-next') && !document.querySelector('.pbar-next').disabled, null, { timeout: 10000 });
-        const good = await page.locator(optionSelector).nth(rights[0]).evaluate((el) => el.dataset.result);
-        if (good !== 'good') fail(`${label}: (q5) trafiona odpowiedź bez oznaczenia ✓.`);
-        await page.waitForTimeout(400);
-        if (!(await visibleInScreen('[data-testid="simple-feedback"]'))) fail(`${label}: (q5) zdanie po trafieniu poza ekranem.`);
+        const shown = await Promise.all(
+          rights.map((index) => page.locator(optionSelector).nth(index).evaluate((el) => ({ result: el.dataset.result, picked: el.dataset.picked, mark: el.querySelector('[aria-hidden="true"]')?.textContent, text: el.textContent }))),
+        );
+        if (shown.some((s) => s.result !== 'good' || s.picked !== 'false' || /[A-H]/.test(s.mark ?? '') || !s.text.includes('Poprawna odpowiedź'))) {
+          fail(`${label}: (q5) poprawna odpowiedź bez oznaczenia ✓ i zdania (${JSON.stringify(shown)}).`);
+        }
+        await shot(page, `${viewport.name}-monitor-${testCase.slug}${testCase.pseudo ? '-xx' : ''}-zle`);
         const after = await geometry();
         if (after.areaScroll > 1 || after.pageScroll.some((v) => v > 1)) fail(`${label}: (q5) po odpowiedzi przewija się obszar bloku albo strona.`);
         if (errors.length > 0) fail(`${label}: (q6) błędy: ${errors.join(' | ')}`);
-        await shot(page, `${viewport.name}-monitor-${testCase.slug}${testCase.pseudo ? '-xx' : ''}-dobrze`);
-        step(`${label}: (q1-q6${testCase.illustration ? ', q7' : ''}) ${wide ? 'ekran na białym prostokącie monitora' : 'karta w ramce'}, bez przewijania strony, tekst ≥ 16 px, A/B/C ≥ 44 px, ✕/✓, zdanie w ekranie, „Dalej” OK`, true);
+        step(`${label}: (q1-q6${testCase.illustration ? ', q7' : ''}) ${wide ? 'ekran na białym prostokącie monitora' : 'karta w ramce'}, bez przewijania strony, tekst ≥ 16 px, A/B/C i „Sprawdź” ≥ 44 px, ✕ i poprawne ✓, zdanie w ekranie, „Dalej” OK`, true);
       }
       // (q8) Ilustracja obok tekstu (NARRATIVE, D-200): wczytana, ≥ 60 px, w oknie; tekst obok (komputer) albo pod nią (telefon), ≥ 16 px; bez
       // przewijania strony.
@@ -2978,21 +2982,14 @@ try {
         const body = JSON.parse(route.request().postData() ?? '{}');
         const blockId = decodeURIComponent(route.request().url().split('/blocks/')[1].split('/')[0]);
         const block = demoBlocks.find((b) => b.id === blockId);
-        if (Array.isArray(body.options)) {
-          // Wielokrotny wybór (D-158): trafienie = dokładnie zbiór poprawnych; ocena każdej zaznaczonej, jak w API.
-          const good = block.options.every((option, index) => (option.correct === true) === body.options.includes(index));
-          const count = (mistakes.get(blockId) ?? 0) + (good ? 0 : 1);
-          mistakes.set(blockId, count);
-          const options = body.options.map((index) => ({ option: index, result: block.options[index].correct ? 'good' : 'bad', feedback: block.options[index].feedback }));
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({ blockId, result: good ? 'good' : 'bad', feedback: '', options, ...(count >= 2 ? { hint: block.hint } : {}), done: good }),
-          });
+        if (block.type === 'QUIZ') {
+          // D-204: jedna próba rozstrzyga - jak w API.
+          await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(quizCheckReply(block, body)) });
           return;
         }
-        const answer = block.type === 'QUIZ' ? block.options[body.option] : block.cards.find((card) => card.id === body.card);
-        const good = block.type === 'QUIZ' ? answer.correct === true : answer.correct === body.verdict;
+        // SWIPE_SORT: każda karta raz, podpowiedź po 2 błędach.
+        const answer = block.cards.find((card) => card.id === body.card);
+        const good = answer.correct === body.verdict;
         const count = (mistakes.get(blockId) ?? 0) + (good ? 0 : 1);
         mistakes.set(blockId, count);
         await route.fulfill({
@@ -3056,20 +3053,22 @@ try {
       const optionTarget = await minTarget('[data-testid="simple-option"]');
       if (optionTarget < 43.5) fail(`${label}: (p2) odpowiedź mniejsza niż 44 px (${optionTarget.toFixed(1)}).`);
       const quiz = demoBlocks.find((b) => b.id === 'wybor');
-      const wrong = quiz.options.map((option, index) => (option.correct ? -1 : index)).filter((index) => index >= 0);
+      const wrong = quiz.options.findIndex((option) => !option.correct);
       const right = quiz.options.findIndex((option) => option.correct);
-      await page.getByTestId('simple-option').nth(wrong[0]).click();
+      // D-204: klik tylko zaznacza (bez oceny), „Sprawdź” ≥ 44 px wysyła - jedna próba rozstrzyga.
+      await page.getByTestId('simple-option').nth(wrong).click();
+      if ((await page.locator('[data-testid="simple-feedback"][data-result]').count()) > 0) fail(`${label}: (p3) ocena po samym zaznaczeniu, bez „Sprawdź”.`);
+      const choiceCheck = await minTarget('[data-testid="simple-check"]');
+      if (choiceCheck < 43.5) fail(`${label}: (p3) „Sprawdź” niższy niż 44 px (${choiceCheck.toFixed(1)}).`);
+      await page.getByTestId('simple-check').click();
       await page.locator('[data-testid="simple-feedback"][data-result="bad"]').waitFor({ timeout: 10000 });
-      if (!(await inArea('[data-testid="simple-feedback"]'))) fail(`${label}: (p2) zdanie po kliknięciu poza obszarem bloku.`);
-      await page.getByTestId('simple-option').nth(wrong[1]).click();
-      await page.getByTestId('simple-hint').waitFor({ timeout: 10000 });
-      if (!(await inArea('[data-testid="simple-hint"]'))) fail(`${label}: (p3) podpowiedź poza obszarem bloku.`);
-      await common(`${label} (podpowiedź)`);
-      await shot(page, `${viewport.name}-prosty-wybor-podpowiedz`);
-      await page.getByTestId('simple-option').nth(right).click();
-      await page.locator('[data-testid="simple-feedback"][data-result="good"]').waitFor({ timeout: 10000 });
+      if (!(await inArea('[data-testid="simple-feedback"]'))) fail(`${label}: (p2) zdanie po „Sprawdź” poza obszarem bloku.`);
+      if ((await page.getByTestId('simple-option').nth(right).getAttribute('data-result')) !== 'good') fail(`${label}: (p3) poprawna odpowiedź nie pokazana na zielono.`);
+      if (!(await inArea('[data-testid="simple-option"][data-picked="false"]'))) fail(`${label}: (p3) poprawna odpowiedź poza obszarem bloku.`);
       await forwardEnabled();
-      step(`${label}: (p1-p3) tekst ≥ 16 px, odpowiedzi ≥ 44 px, zdanie, podpowiedź po 2 błędach, „Dalej” po trafieniu OK`, true);
+      await common(`${label} (po sprawdzeniu)`);
+      await shot(page, `${viewport.name}-prosty-wybor-sprawdzone`);
+      step(`${label}: (p1-p3) tekst ≥ 16 px, odpowiedzi i „Sprawdź” ≥ 44 px, zdanie i poprawna na zielono, „Dalej” po jednej próbie OK`, true);
 
       // (p6) wideo z potoku zasobów (D-159): ramka 16:9 (±2%) w całości w obszarze bloku i w viewporcie, obszar bloku się NIE przewija (ramka
       // wpisana w wysokość), plik i plakat z bazy zasobów (200, video/mp4); „Dalej” nieaktywny do końca filmu, aktywny po `ended`.
@@ -3112,16 +3111,14 @@ try {
       await forwardEnabled();
       step(`${label}: (p1, p2, p6) ramka 16:9 w obszarze bez przewijania, plik i plakat z bazy zasobów, „Dalej” dopiero po końcu filmu OK`, true);
 
-      // (p5) wielokrotny wybór (D-158): pola ≥ 44 px, „Sprawdź” ≥ 44 px; błędny zbiór - oceny przy zaznaczonych (w obszarze bloku), po 2 błędach
-      // podpowiedź; trafienie - „Dalej” aktywny. Najdłuższy stan (oceny przy wszystkich zaznaczonych + podpowiedź) mieści się w bloku z przewijaniem.
+      // (p5) wielokrotny wybór (D-158, D-204): pola ≥ 44 px, „Sprawdź” ≥ 44 px; jedna próba ze wszystkimi odpowiedziami (najdłuższy stan - ocena
+      // i zdanie przy każdej) rozstrzyga: oceny w obszarze bloku (z przewijaniem), „Dalej” aktywny.
       await open('wybor-wielokrotny');
       label = `${viewport.name} / tryb prosty / wielokrotny wybór`;
       await common(label);
       const multiTarget = await minTarget('[data-testid="simple-multi-option"]');
       if (multiTarget < 43.5) fail(`${label}: (p5) odpowiedź mniejsza niż 44 px (${multiTarget.toFixed(1)}).`);
       const multiQuiz = demoBlocks.find((b) => b.id === 'wybor-wielokrotny');
-      const correctIdx = multiQuiz.options.flatMap((option, index) => (option.correct ? [index] : []));
-      const wrongIdx = multiQuiz.options.flatMap((option, index) => (option.correct ? [] : [index]));
       const multiOption = (index) => page.getByTestId('simple-multi-option').nth(index);
       const setSelection = async (indexes) => {
         for (let index = 0; index < multiQuiz.options.length; index += 1) {
@@ -3132,28 +3129,20 @@ try {
       const checkBtn = page.getByTestId('simple-multi-check');
       const checkBox = await checkBtn.boundingBox();
       if (!checkBox || checkBox.height < 43.5) fail(`${label}: (p5) „Sprawdź” niższy niż 44 px - ${JSON.stringify(checkBox)}.`);
-      // 1. błąd: wszystkie odpowiedzi naraz (oceny przy każdej - najdłuższa lista zdań).
+      // Jedna próba: wszystkie odpowiedzi naraz (oceny przy każdej - najdłuższa lista zdań).
       await setSelection(multiQuiz.options.map((_, index) => index));
       await checkBtn.click();
       await page.locator('[data-testid="simple-feedback"][data-result="bad"]').waitFor({ timeout: 10000 });
       const marks = await page.locator('[data-testid="simple-multi-option"][data-result]').count();
       if (marks !== multiQuiz.options.length) fail(`${label}: (p5) ocenionych odpowiedzi ${marks} zamiast ${multiQuiz.options.length}.`);
       if (!(await inArea('[data-testid="simple-multi-option"][data-result="bad"]'))) fail(`${label}: (p5) ocena błędnej odpowiedzi poza obszarem bloku.`);
-      // 2. błąd: sama pierwsza błędna - podpowiedź.
-      await setSelection([wrongIdx[0]]);
-      await checkBtn.click();
-      await page.getByTestId('simple-hint').waitFor({ timeout: 10000 });
-      if (!(await inArea('[data-testid="simple-hint"]'))) fail(`${label}: (p5) podpowiedź poza obszarem bloku.`);
-      await common(`${label} (podpowiedź)`);
-      await shot(page, `${viewport.name}-prosty-wielokrotny-podpowiedz`);
-      await setSelection(correctIdx);
-      await checkBtn.click();
-      await page.locator('[data-testid="simple-feedback"][data-result="good"]').waitFor({ timeout: 10000 });
-      if (!(await inArea('[data-testid="simple-feedback"]'))) fail(`${label}: (p5) „Dobrze” poza obszarem bloku.`);
+      if (!(await inArea('[data-testid="simple-feedback"]'))) fail(`${label}: (p5) werdykt poza obszarem bloku.`);
+      // Przycisk zostaje (fokus), ale nieaktywny - druga próba niemożliwa.
+      if ((await page.getByTestId('simple-multi-check').getAttribute('aria-disabled')) !== 'true') fail(`${label}: (p5) „Sprawdź” aktywny po rozstrzygnięciu - druga próba możliwa.`);
       await forwardEnabled();
-      await common(`${label} (trafienie)`);
-      await shot(page, `${viewport.name}-prosty-wielokrotny-trafienie`);
-      step(`${label}: (p1, p2, p5) pola i „Sprawdź” ≥ 44 px, oceny przy zaznaczonych, podpowiedź po 2 błędach, „Dalej” po trafieniu OK`, true);
+      await common(`${label} (po sprawdzeniu)`);
+      await shot(page, `${viewport.name}-prosty-wielokrotny-sprawdzone`);
+      step(`${label}: (p1, p2, p5) pola i „Sprawdź” ≥ 44 px, oceny przy wszystkich zaznaczonych w obszarze bloku, „Dalej” po jednej próbie OK`, true);
 
       // (p4) SWIPE_SORT - każdy blok modułu podglądu: wiadomości (domyślne etykiety, jak dawny moduł 3) i sytuacje z własnymi etykietami (D-151,
       // najdłuższa dozwolona - 16 znaków).

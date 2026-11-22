@@ -1,16 +1,18 @@
 'use client';
 
-import { useEffect, useId } from 'react';
+import { useEffect, useId, useState } from 'react';
 import type { ClientProgressBlock, ContentBlock } from '@/lib/courses-types';
 import { useSimpleCheck } from './simple-check';
-import { SimpleError, SimpleFeedback, SimpleHint } from './SimpleFeedback';
-import { OPTION, OptionMark, optionTone, useRevealOnCheck } from './simple-option';
+import { SimpleError, SimpleFeedback } from './SimpleFeedback';
+import { OPTION, OptionFeedback, OptionMark, decidedMarks, optionTone, useRevealOnCheck } from './simple-option';
 import MonitorStage from '../player/MonitorStage';
 
-// Wybór w trybie prostym (QUIZ, D-132): duże przyciski odpowiedzi; każde kliknięcie sprawdza serwer (/check) - od razu „Dobrze”/„Nie tym
-// razem” i zdanie z treści. Błędna odpowiedź zostaje oznaczona i wyłączona, można próbować dalej; po 2 błędach - podpowiedź. „Dalej” w pasku
-// po trafieniu (zapis z indeksem trafionej odpowiedzi; wynik serwer liczy z PIERWSZEJ próby). Bez wyniku w bloku.
-// Wygląd (szablon modułu, D-164): pytanie na ekranie wspólnego monitora (MonitorStage), „Pytanie N z M”, odpowiedzi A/B/C.
+// Wybór w trybie prostym (QUIZ, D-132; D-204 - decyzja właściciela 2026-11-22: „każda odpowiedź powinna być zaznaczona i wynik sprawdzany
+// dopiero jak klikamy Sprawdź”, po błędzie „pokazać poprawną i iść dalej”): klik zaznacza odpowiedź (można zmienić), „Sprawdź” wysyła ją
+// do serwera (/check) - JEDNA próba rozstrzyga pytanie. Po niej: zaznaczona zielona/czerwona, poprawna (gdy nie ta) zielona, każda ze
+// zdaniem z treści; „Dalej” w pasku od razu. Bez prób do skutku i podpowiedzi. Wynik bloku liczy serwer z tej próby.
+// Wygląd (szablon modułu, D-164): pytanie na ekranie wspólnego monitora (MonitorStage), „Pytanie N z M”, odpowiedzi A/B/C - natywny
+// przycisk radiowy schowany (sr-only) za literą.
 
 const FOCUS_RING = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
 
@@ -38,24 +40,28 @@ export default function SimpleChoiceBlock({
   disabled?: boolean;
 }) {
   const promptId = useId();
+  const groupName = useId();
   const options = block.options ?? [];
-  const { checks, hint, pending, error, check } = useSimpleCheck(courseId, block.id ?? '', progress);
-  const hit = checks.find((entry) => entry.result === 'good');
-  const hitIndex = typeof hit?.item === 'number' ? hit.item : null;
-  const last = checks[checks.length - 1];
+  const { checks, pending, error, check } = useSimpleCheck(courseId, block.id ?? '', progress);
+  // Rozstrzyga pierwsza próba (wpisy sprzed D-204 mogą mieć ich więcej - serwer pokazuje tylko pierwszą).
+  const decided = checks[0];
+  const decidedIndex = typeof decided?.item === 'number' ? decided.item : null;
+  const marks = decidedMarks(decided);
   const revealRef = useRevealOnCheck(checks.length);
+  const [selected, setSelected] = useState<number | null>(decidedIndex);
+  const locked = disabled || pending || decided !== undefined;
 
   useEffect(() => {
-    onReady(hitIndex !== null ? () => onSubmit(hitIndex) : null);
+    onReady(decidedIndex !== null ? () => onSubmit(decidedIndex) : null);
     // onReady/onSubmit celowo poza deps - remount przez `key` na zmianę bloku.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hitIndex]);
+  }, [decidedIndex]);
 
-  // Próby do podglądu „Wstecz” w tej samej sesji.
+  // Próba do podglądu „Wstecz” w tej samej sesji.
   useEffect(() => {
-    if (checks.length > 0) onProgress?.({ checks, ...(hint ? { hint } : {}) });
+    if (checks.length > 0) onProgress?.({ checks });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [checks, hint]);
+  }, [checks]);
 
   return (
     <MonitorStage label="Pytanie quizu" illustration={block.illustration} contentBase={contentBase}>
@@ -66,40 +72,73 @@ export default function SimpleChoiceBlock({
             {questionLabel}
           </p>
         )}
-        <p id={promptId} data-monitor-prompt className="text-xl font-bold leading-snug tracking-[-0.01em] text-ink">
-          {block.prompt}
-        </p>
-        <div role="group" aria-labelledby={promptId} className="flex flex-col gap-2.5">
+        <div className="flex flex-col gap-1">
+          <p id={promptId} data-monitor-prompt className="text-xl font-bold leading-snug tracking-[-0.01em] text-ink">
+            {block.prompt}
+          </p>
+          <p id={`${promptId}-how`} lang="pl" className="text-base text-muted">
+            Zaznacz jedną odpowiedź i kliknij „Sprawdź”.
+          </p>
+        </div>
+        <div role="radiogroup" aria-labelledby={promptId} aria-describedby={`${promptId}-how`} className="flex flex-col gap-2.5">
           {options.map((option, index) => {
-            const tried = checks.find((entry) => entry.item === index);
-            const state = tried?.result ?? null;
-            // Sprawdzona odpowiedź i czas sprawdzania: aria-disabled (nie `disabled`) - fokus zostaje na klikniętym przycisku, klawiatura i
-            // czytnik nie wracają na początek strony po każdym kliknięciu. Klik w takim stanie nic nie robi.
-            const locked = pending || hitIndex !== null || state !== null;
+            const mark = marks.get(index);
+            const checked = selected === index;
             return (
-              <button
+              <label
                 key={index}
-                type="button"
                 data-testid="simple-option"
-                data-result={state ?? undefined}
-                disabled={disabled}
-                aria-disabled={locked || undefined}
-                onClick={() => {
-                  if (!locked) void check({ option: index });
-                }}
-                className={`${OPTION} ${FOCUS_RING} ${optionTone(state, locked)} disabled:cursor-default ${locked ? 'cursor-default' : ''}`}
+                data-result={mark?.result}
+                data-picked={mark ? String(mark.picked !== false) : undefined}
+                className={`${OPTION} has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${optionTone(
+                  mark?.result ?? null,
+                  locked,
+                  checked,
+                )} ${locked ? 'cursor-default' : 'cursor-pointer'}`}
               >
-                <OptionMark index={index} state={state} />
-                <span>{option.text}</span>
-                {state && <span className="sr-only">{state === 'good' ? ' - dobra odpowiedź' : ' - zła odpowiedź'}</span>}
-              </button>
+                <input
+                  type="radio"
+                  name={groupName}
+                  checked={checked}
+                  // aria-disabled zamiast `disabled` w trakcie sprawdzania i po rozstrzygnięciu - fokus zostaje na odpowiedzi.
+                  disabled={disabled}
+                  aria-disabled={locked || undefined}
+                  onChange={() => {
+                    if (!locked) setSelected(index);
+                  }}
+                  className="sr-only"
+                />
+                <OptionMark index={index} state={mark?.result ?? null} selected={checked} />
+                <span className="flex min-w-0 flex-col gap-1">
+                  <span>{option.text}</span>
+                  {mark && <OptionFeedback mark={mark} testId="simple-option-feedback" />}
+                </span>
+              </label>
             );
           })}
         </div>
-        <div ref={revealRef}>
-          <SimpleFeedback variant="plain" result={last?.result ?? null} text={last?.feedback} />
+        <div>
+          {/* Po rozstrzygnięciu przycisk zostaje (aria-disabled, „Sprawdzone”) - fokus klawiatury i czytnika nie ucieka na początek strony. */}
+          <button
+            type="button"
+            data-testid="simple-check"
+            disabled={disabled || (decided === undefined && (pending || selected === null))}
+            aria-disabled={decided !== undefined || undefined}
+            onClick={() => {
+              if (decided === undefined && selected !== null) void check({ option: selected });
+            }}
+            className={`min-h-[44px] rounded-[10px] bg-ink px-5 text-base font-bold text-white hover:bg-slate-800 disabled:cursor-default disabled:opacity-50 aria-disabled:cursor-default aria-disabled:opacity-50 ${FOCUS_RING}`}
+          >
+            {decided === undefined ? 'Sprawdź' : 'Sprawdzone'}
+          </button>
         </div>
-        <SimpleHint text={hitIndex === null ? hint : undefined} />
+        <div ref={revealRef} lang="pl">
+          <SimpleFeedback
+            variant="plain"
+            result={decided?.result ?? null}
+            text={decided?.result === 'good' ? 'To poprawna odpowiedź.' : 'Poprawną odpowiedź oznaczyliśmy znakiem ✓.'}
+          />
+        </div>
         <SimpleError text={error} />
       </div>
     </MonitorStage>

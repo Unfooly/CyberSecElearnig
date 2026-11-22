@@ -134,16 +134,16 @@ export function evaluateSubmit(
     }
     case 'QUIZ':
       if (account.simpleMode) {
-        // Tryb prosty (D-132): próby do skutku przez /check - „Dalej” dopiero po trafieniu; wynik z PIERWSZEJ próby. `answer` od klienta
-        // celowo pominięty: zapisujemy indeks trafienia z prób na serwerze (klient nie wybiera, co się liczy).
+        // Tryb prosty (D-204): jedna próba przez /check („Sprawdź”) rozstrzyga pytanie - „Dalej” po niej, wynik z tej próby. `answer` od
+        // klienta celowo pominięty: zapisujemy wybór z próby na serwerze (klient nie wybiera, co się liczy). Wpisy sprzed D-204 mogą mieć
+        // kilka prób (do skutku) - liczy się pierwsza, jak wtedy.
         const checks = existing?.checks ?? [];
-        const hit = checks.find((check) => check.correct);
-        if (!hit) throw new BadRequestException('Najpierw wybierz poprawną odpowiedź');
-        const first = checks[0].correct;
-        // Wielokrotny wybór (D-158): trafiony zbiór jest w `checks` („0,2”) - pole `answer` to jeden indeks, więc go nie ustawiamy.
-        const hitAnswer = block.multiple === true ? {} : { answer: Number(hit.item) };
+        if (checks.length === 0) throw new BadRequestException('Najpierw zaznacz odpowiedź i kliknij „Sprawdź”');
+        const first = checks[0];
+        // Wielokrotny wybór (D-158): zbiór jest w `checks` („0,2”) - pole `answer` to jeden indeks, więc go nie ustawiamy.
+        const firstAnswer = block.multiple === true ? {} : { answer: Number(first.item) };
         return {
-          entry: baseEntry(block, now, { ...hitAnswer, correct: first, points: first ? 1 : 0, checks }),
+          entry: baseEntry(block, now, { ...firstAnswer, correct: first.correct, points: first.correct ? 1 : 0, checks }),
           notesAdded: [],
         };
       }
@@ -582,29 +582,35 @@ export interface CheckResponse {
   result: 'good' | 'bad';
   /** Jedno zdanie po kliknięciu (sekret treści dla tej odpowiedzi/karty - ujawniony dopiero po wyborze). */
   feedback: string;
-  /** Podpowiedź bloku po SIMPLE_HINT_AFTER_ERRORS błędach. */
+  /** Podpowiedź bloku po SIMPLE_HINT_AFTER_ERRORS błędach (SWIPE_SORT; pytanie quizu od D-204 bez podpowiedzi). */
   hint?: string;
-  /** Blok gotowy do zapisu („Dalej”): wybór trafiony albo wszystkie karty ocenione. */
+  /** Blok gotowy do zapisu („Dalej”): pytanie quizu rozstrzygnięte (D-204 - po jednej próbie) albo wszystkie karty ocenione. */
   done: boolean;
   /**
-   * Wielokrotny wybór (D-158): ocena i zdanie dla KAŻDEJ zaznaczonej odpowiedzi. Niezaznaczone nie są oceniane - po błędnej próbie
-   * odpowiedź nie mówi, której poprawnej brakuje (wtedy `feedback` bloku jest pusty).
+   * Pytanie quizu w trybie prostym (D-204, jedna próba): ocena i zdanie dla każdej ZAZNACZONEJ odpowiedzi (`picked: true`) oraz każdej
+   * POPRAWNEJ niezaznaczonej (`picked: false`, „tę trzeba było zaznaczyć”) - klucz ujawniony dopiero po rozstrzygnięciu pytania.
+   * Niezaznaczone błędne - bez oceny.
    */
-  options?: { option: number; result: 'good' | 'bad'; feedback: string }[];
+  options?: { option: number; result: 'good' | 'bad'; feedback: string; picked: boolean }[];
 }
 
 type ChoiceOption = Record<string, any>;
 const optionFeedback = (option: ChoiceOption | undefined): string => (typeof option?.feedback === 'string' ? option.feedback : '');
-const pickedView = (options: readonly ChoiceOption[], picked: readonly number[]) =>
-  picked.map((option) => ({ option, result: options[option]?.correct === true ? ('good' as const) : ('bad' as const), feedback: optionFeedback(options[option]) }));
+const decidedView = (options: readonly ChoiceOption[], picked: readonly number[]) =>
+  options.flatMap((option, index) => {
+    const isPicked = picked.includes(index);
+    const isCorrect = option?.correct === true;
+    if (!isPicked && !isCorrect) return [];
+    return [{ option: index, result: isCorrect ? ('good' as const) : ('bad' as const), feedback: optionFeedback(option), picked: isPicked }];
+  });
 
 const errorCount = (checks: readonly { correct: boolean }[]) => checks.filter((check) => !check.correct).length;
 const simpleHint = (block: Block, checks: readonly { correct: boolean }[]) =>
   errorCount(checks) >= SIMPLE_HINT_AFTER_ERRORS && typeof block.hint === 'string' ? block.hint : undefined;
 
 /**
- * Ocena jednego kliknięcia (/check, D-132): QUIZ w trybie prostym (wybór - próby do skutku, wynik z PIERWSZEJ) i SWIPE_SORT (każda karta
- * raz). Zapisuje próbę w postępie (`checks`, id z treści) zanim blok jest ukończony; zapis bloku („Dalej”) liczy wynik z tych prób.
+ * Ocena jednego kliknięcia (/check, D-132): QUIZ w trybie prostym (zaznaczenie i „Sprawdź” - jedna próba rozstrzyga, D-204) i SWIPE_SORT
+ * (każda karta raz). Zapisuje próbę w postępie (`checks`, id z treści) zanim blok jest ukończony; zapis bloku („Dalej”) liczy wynik z prób.
  */
 export function evaluateCheck(
   block: Block,
@@ -620,29 +626,41 @@ export function evaluateCheck(
   let feedback: string;
   let done: boolean;
   let optionResults: CheckResponse['options'];
-  if (block.type === 'QUIZ' && simpleMode && block.multiple === true) {
-    // Wielokrotny wybór (D-158): trafienie = dokładnie zbiór poprawnych (bez punktów cząstkowych); próby do skutku, wynik z pierwszej.
-    const { options: picked } = parseAnswer(quizMultiCheckAnswer, answer);
+  if (block.type === 'QUIZ' && simpleMode) {
+    // D-204: zaznaczenie i „Sprawdź” - jedna próba rozstrzyga pytanie (bez prób do skutku i podpowiedzi). Wielokrotny wybór (D-158):
+    // dobrze = dokładnie zbiór poprawnych (bez punktów cząstkowych).
     const options: ChoiceOption[] = Array.isArray(block.options) ? block.options : [];
-    if (new Set(picked).size !== picked.length || picked.some((option) => option >= options.length)) throw new BadRequestException('Brak lub nieprawidłowa odpowiedź dla tego bloku');
-    if (checks.some((check) => check.correct)) throw new BadRequestException('Ten wybór jest już rozstrzygnięty');
-    item = multiItem(picked);
-    if (checks.some((check) => check.item === item)) throw new BadRequestException('Ta odpowiedź była już sprawdzona');
+    let picked: number[];
+    if (block.multiple === true) {
+      picked = parseAnswer(quizMultiCheckAnswer, answer).options;
+      if (new Set(picked).size !== picked.length) throw new BadRequestException('Brak lub nieprawidłowa odpowiedź dla tego bloku');
+    } else {
+      picked = [parseAnswer(quizCheckAnswer, answer).option];
+    }
+    if (picked.some((option) => option >= options.length)) throw new BadRequestException('Brak lub nieprawidłowa odpowiedź dla tego bloku');
+    if (checks.length > 0) {
+      // Pytanie już rozstrzygnięte (code review D-204): ponowne „Sprawdź” - np. gdy odpowiedź na pierwsze nie dotarła (timeout, druga karta) -
+      // zwraca ZAPISANE rozstrzygnięcie, bez nowej próby i bez zmiany wpisu; nowy wybór z żądania jest ignorowany. Idempotentnie, więc
+      // gracz nie utyka bez „Dalej”. Klucz - tylko z już rozstrzygniętej próby.
+      const first = checks[0];
+      const decided = multiPicked(first.item);
+      return {
+        entry: existing!,
+        response: {
+          blockId: block.id,
+          result: first.correct ? 'good' : 'bad',
+          feedback: block.multiple === true ? '' : optionFeedback(options[decided[0]]),
+          done: true,
+          options: decidedView(options, decided),
+        },
+      };
+    }
+    item = block.multiple === true ? multiItem(picked) : String(picked[0]);
     const correctSet = multiItem(options.flatMap((option, index) => (option.correct === true ? [index] : [])));
-    correct = item === correctSet;
-    feedback = '';
-    optionResults = pickedView(options, multiPicked(item));
-    done = correct;
-  } else if (block.type === 'QUIZ' && simpleMode) {
-    const { option } = parseAnswer(quizCheckAnswer, answer);
-    const options: Record<string, any>[] = Array.isArray(block.options) ? block.options : [];
-    if (option >= options.length) throw new BadRequestException('Brak lub nieprawidłowa odpowiedź dla tego bloku');
-    if (checks.some((check) => check.correct)) throw new BadRequestException('Ten wybór jest już rozstrzygnięty');
-    item = String(option);
-    if (checks.some((check) => check.item === item)) throw new BadRequestException('Ta odpowiedź była już sprawdzona');
-    correct = options[option].correct === true;
-    feedback = typeof options[option].feedback === 'string' ? options[option].feedback : '';
-    done = correct;
+    correct = block.multiple === true ? item === correctSet : options[picked[0]].correct === true;
+    feedback = block.multiple === true ? '' : optionFeedback(options[picked[0]]);
+    optionResults = decidedView(options, multiPicked(item));
+    done = true;
   } else if (block.type === 'SWIPE_SORT') {
     const { card, verdict } = parseAnswer(swipeCheckAnswer, answer);
     const cards = swipeCards(block);
@@ -672,18 +690,23 @@ export function checksView(block: Block, entry: BlockEntry, opaque: OpaqueId) {
     const option = Array.isArray(block.options) ? block.options[Number(item)] : undefined;
     return typeof option?.feedback === 'string' ? option.feedback : '';
   };
-  const multiple = block.type === 'QUIZ' && block.multiple === true;
-  const options: ChoiceOption[] = Array.isArray(block.options) ? block.options : [];
-  const view = checks.map((check) =>
-    multiple
-      ? // Wielokrotny wybór (D-158): zbiór zaznaczonych i ocena każdej z nich - jak w odpowiedzi /check.
-        { item: multiPicked(check.item), result: check.correct ? ('good' as const) : ('bad' as const), feedback: '', options: pickedView(options, multiPicked(check.item)) }
-      : {
-          item: block.type === 'SWIPE_SORT' ? opaque(block.id, check.item) : Number(check.item),
-          result: check.correct ? ('good' as const) : ('bad' as const),
-          feedback: feedbackOf(check.item),
-        },
-  );
+  if (block.type === 'QUIZ') {
+    // Pytanie quizu (D-204): rozstrzyga pierwsza próba (wpisy sprzed D-204 mogą mieć ich więcej) - widok jak odpowiedź /check, bez podpowiedzi.
+    const options: ChoiceOption[] = Array.isArray(block.options) ? block.options : [];
+    const multiple = block.multiple === true;
+    const view = checks.slice(0, 1).map((check) => ({
+      item: multiple ? multiPicked(check.item) : Number(check.item),
+      result: check.correct ? ('good' as const) : ('bad' as const),
+      feedback: multiple ? '' : feedbackOf(check.item),
+      options: decidedView(options, multiPicked(check.item)),
+    }));
+    return { checks: view };
+  }
+  const view = checks.map((check) => ({
+    item: opaque(block.id, check.item),
+    result: check.correct ? ('good' as const) : ('bad' as const),
+    feedback: feedbackOf(check.item),
+  }));
   const hint = simpleHint(block, checks);
   return { checks: view, ...(hint ? { hint } : {}) };
 }

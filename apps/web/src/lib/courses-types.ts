@@ -58,6 +58,11 @@ export interface CheckedOption {
   option: number;
   result: 'good' | 'bad';
   feedback: string;
+  /**
+   * Pytanie quizu po „Sprawdź” (D-204): true - odpowiedź zaznaczona przez gracza; false - poprawna, której nie zaznaczył (klucz ujawniony
+   * po rozstrzygnięciu). Brak pola - odpowiedź serwera sprzed D-204 (tylko zaznaczone).
+   */
+  picked?: boolean;
 }
 
 export interface SimpleCheck {

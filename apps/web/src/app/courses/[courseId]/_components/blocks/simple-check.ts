@@ -4,7 +4,7 @@ import { useCallback, useRef, useState } from 'react';
 import type { CheckResponse, SimpleCheck } from '@/lib/courses-types';
 
 // Ocena jednego kliknięcia (tryb prosty i SWIPE_SORT, D-132): POST /api/courses/:id/blocks/:blockId/check. Klient wysyła tylko swój wybór,
-// werdykt, zdanie i podpowiedź (po 2 błędach) liczy serwer. Stan prób zaczyna się od postępu z /start (odświeżenie strony w trakcie bloku).
+// werdykt, zdanie, klucz po rozstrzygnięciu pytania (D-204) i podpowiedź (SWIPE_SORT, po 2 błędach) liczy serwer. Stan prób zaczyna się od postępu z /start (odświeżenie strony w trakcie bloku).
 
 export type CheckBody = { option: number } | { options: number[] } | { card: string; verdict: 'suspicious' | 'ok' };
 

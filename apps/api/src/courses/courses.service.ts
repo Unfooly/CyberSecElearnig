@@ -632,7 +632,9 @@ export class CoursesService implements OnModuleInit {
 
   /**
    * Ocena jednego kliknięcia (D-132): wybór w trybie prostym albo karta SWIPE_SORT bieżącego bloku. Próba zapisana w postępie (wynik bloku
-   * liczy zapis „Dalej” z tych prób), odpowiedź: werdykt, zdanie i podpowiedź po 2 błędach - nigdy klucz (`correct`) innych kart.
+   * liczy zapis „Dalej” z tych prób). SWIPE_SORT: werdykt, zdanie i podpowiedź po 2 błędach - nigdy klucz (`correct`) innych kart. Pytanie
+   * quizu (D-204): jedna próba rozstrzyga, a odpowiedź na nią CELOWO ujawnia klucz tego pytania (poprawne niezaznaczone, `picked: false`) -
+   * dopiero po rozstrzygnięciu; blokada przypisania (FOR UPDATE) gwarantuje jedną próbę przy równoległych żądaniach.
    */
   async checkBlock(
     organizationId: string,

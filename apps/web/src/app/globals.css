@@ -1195,7 +1195,8 @@
   .monitor-stage-screen > div {
     gap: 8px;
   }
-  .monitor-stage-screen [role='group'] {
+  /* radiogroup - pojedynczy wybór od D-204 (przyciski radiowe zamiast zwykłych przycisków). */
+  .monitor-stage-screen :is([role='group'], [role='radiogroup']) {
     gap: 6px;
   }
   .monitor-stage-screen :is([data-testid='simple-option'], [data-testid='simple-multi-option']) {

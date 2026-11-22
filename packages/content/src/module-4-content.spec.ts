@@ -67,7 +67,7 @@ describe('moduł 4 „Na skróty” - treść', () => {
     expect(block('pliki-w-chmurze').prompt).toContain('Kasia');
   });
 
-  it('pytania: dobra odpowiedź to zawsze „zapytaj IT”/ryzyko; wielokrotny wybór - 3 dobre i 1 zła; podpowiedź po dwóch błędach', () => {
+  it('pytania: dobra odpowiedź to zawsze „zapytaj IT”/ryzyko; wielokrotny wybór - 3 dobre i 1 zła; podpowiedź wymagana (D-204: dziś nieużywana)', () => {
     const options = (id: string) => block(id).options as Option[];
     for (const id of QUIZZES) expect(typeof block(id).hint).toBe('string');
     expect(options('instalowac').find((o) => o.correct)!.text).toBe('Najpierw zapytać dział IT, czy może z niego korzystać.');

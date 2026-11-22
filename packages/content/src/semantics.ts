@@ -1414,7 +1414,8 @@ function simpleModeErrors(contentModule: ResolvedModule): string[] {
           if (option.feedback === undefined) errors.push(`${where}: options[${i}].feedback: tryb prosty - każda odpowiedź ma zdanie po kliknięciu`);
           else if (option.feedback.length > SIMPLE_FEEDBACK_MAX) errors.push(`${where}: options[${i}].feedback: tryb prosty - najwyżej ${SIMPLE_FEEDBACK_MAX} znaków`);
         });
-        if (block.hint === undefined) errors.push(`${where}: hint: tryb prosty - podpowiedź po 2 błędach jest wymagana`);
+        // D-204: jedna próba - podpowiedź w QUIZ dziś nieużywana; pole zostaje wymagane (krok „Powtórz quiz”), komunikat mówi to wprost.
+        if (block.hint === undefined) errors.push(`${where}: hint: tryb prosty - podpowiedź jest wymagana (w pytaniu quizu dziś nieużywana, D-204)`);
         break;
       }
       case 'SWIPE_SORT': {

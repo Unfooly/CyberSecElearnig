@@ -4,7 +4,8 @@ import { clientProgress } from '../client-view';
 import { BlockEntry, ProgressV2 } from '../progress';
 import { Block, checksView, evaluateCheck, evaluateSubmit } from './evaluate';
 
-// Tryb prosty i SWIPE_SORT (D-132): ocena każdego kliknięcia (/check), wynik bloku z prób, podpowiedź po 2 błędach.
+// Tryb prosty i SWIPE_SORT (D-132): ocena przez /check, wynik bloku z prób. Pytanie quizu (D-204): jedna próba „Sprawdź” rozstrzyga, potem
+// klucz (poprawne niezaznaczone); SWIPE_SORT - każda karta raz, podpowiedź po 2 błędach.
 
 const now = new Date('2026-10-07T12:00:00.000Z');
 const opaque = (blockId: string, itemId: string) => `op-${blockId}-${itemId}`;
@@ -23,19 +24,45 @@ function clicks(block: Block, answers: unknown[], simpleMode = true) {
   return { entry: entry!, responses };
 }
 
-describe('evaluateCheck: wybór w trybie prostym', () => {
-  it('błędna odpowiedź - „bad” i jej zdanie; poprawna - „good”, blok gotowy; wpis nieukończony do zapisu', () => {
-    const { entry, responses } = clicks(quiz(), [{ option: 0 }, { option: 1 }]);
-    expect(responses[0]).toEqual({ blockId: 'wybor', result: 'bad', feedback: `${SECRET_MARKER}-prosty-zle`, done: false });
-    expect(responses[1]).toEqual({ blockId: 'wybor', result: 'good', feedback: `${SECRET_MARKER}-prosty-dobrze`, done: true });
-    expect(entry).toMatchObject({ done: false, checks: [{ item: '0', correct: false }, { item: '1', correct: true }] });
+describe('evaluateCheck: wybór w trybie prostym (D-204 - jedna próba)', () => {
+  it('zła odpowiedź rozstrzyga: „bad”, jej zdanie, zaznaczona i POPRAWNA (klucz po rozstrzygnięciu) ze zdaniami; blok gotowy do zapisu', () => {
+    const { entry, responses } = clicks(quiz(), [{ option: 0 }]);
+    expect(responses[0]).toEqual({
+      blockId: 'wybor',
+      result: 'bad',
+      feedback: `${SECRET_MARKER}-prosty-zle`,
+      done: true,
+      options: [
+        { option: 0, result: 'bad', feedback: `${SECRET_MARKER}-prosty-zle`, picked: true },
+        { option: 1, result: 'good', feedback: `${SECRET_MARKER}-prosty-dobrze`, picked: false },
+      ],
+    });
+    expect(responses[0]).not.toHaveProperty('hint');
+    expect(entry).toMatchObject({ done: false, checks: [{ item: '0', correct: false }] });
   });
 
-  it('po trafieniu i przy powtórzonej odpowiedzi - 400; poza trybem prostym QUIZ nie przyjmuje /check', () => {
-    const { entry } = clicks(quiz(), [{ option: 1 }]);
-    expect(() => evaluateCheck(quiz(), { option: 0 }, entry, now, opaque, true)).toThrow(BadRequestException);
-    const wrong = clicks(quiz(), [{ option: 0 }]).entry;
-    expect(() => evaluateCheck(quiz(), { option: 0 }, wrong, now, opaque, true)).toThrow(BadRequestException);
+  it('dobra odpowiedź: „good”, tylko zaznaczona (to ona jest poprawna)', () => {
+    const { responses } = clicks(quiz(), [{ option: 1 }]);
+    expect(responses[0]).toEqual({
+      blockId: 'wybor',
+      result: 'good',
+      feedback: `${SECRET_MARKER}-prosty-dobrze`,
+      done: true,
+      options: [{ option: 1, result: 'good', feedback: `${SECRET_MARKER}-prosty-dobrze`, picked: true }],
+    });
+  });
+
+  it('ponowne „Sprawdź” po rozstrzygnięciu (np. zgubiona odpowiedź) - to samo rozstrzygnięcie, bez nowej próby, nowy wybór ignorowany', () => {
+    const wrong = clicks(quiz(), [{ option: 0 }]);
+    const again = evaluateCheck(quiz(), { option: 1 }, wrong.entry, now, opaque, true);
+    expect(again.response).toEqual(wrong.responses[0]);
+    expect(again.entry).toBe(wrong.entry);
+    expect(again.entry.checks).toEqual([{ item: '0', correct: false }]);
+    const right = clicks(quiz(), [{ option: 1 }]);
+    expect(evaluateCheck(quiz(), { option: 0 }, right.entry, now, opaque, true).response).toEqual(right.responses[0]);
+  });
+
+  it('poza trybem prostym QUIZ nie przyjmuje /check; indeks spoza bloku - 400', () => {
     expect(() => evaluateCheck(quiz(), { option: 0 }, undefined, now, opaque, false)).toThrow(BadRequestException);
     expect(() => evaluateCheck(quiz(), { option: 5 }, undefined, now, opaque, true)).toThrow(BadRequestException);
   });
@@ -46,12 +73,21 @@ describe('evaluateCheck: wybór w trybie prostym', () => {
     expect(() => evaluateCheck(quiz(), { option: 1 }, undefined, now, opaque, false)).toThrow('Ten blok nie przyjmuje sprawdzania odpowiedzi');
   });
 
-  it('zapis bloku: dopiero po trafieniu; wynik z PIERWSZEJ próby', () => {
-    expect(() => evaluateSubmit(quiz(), 1, undefined, now, opaque, { simpleMode: true })).toThrow('Najpierw wybierz poprawną odpowiedź');
-    const firstWrong = clicks(quiz(), [{ option: 0 }, { option: 1 }]).entry;
-    expect(evaluateSubmit(quiz(), 1, firstWrong, now, opaque, { simpleMode: true }).entry).toMatchObject({ done: true, answer: 1, correct: false, points: 0 });
-    const firstRight = clicks(quiz(), [{ option: 1 }]).entry;
-    expect(evaluateSubmit(quiz(), 1, firstRight, now, opaque, { simpleMode: true }).entry).toMatchObject({ done: true, correct: true, points: 1 });
+  it('zapis bloku: dopiero po „Sprawdź”; wynik i odpowiedź z tej próby (także zła - bez trafienia), `answer` klienta pominięty', () => {
+    expect(() => evaluateSubmit(quiz(), 1, undefined, now, opaque, { simpleMode: true })).toThrow('Najpierw zaznacz odpowiedź i kliknij „Sprawdź”');
+    const wrong = clicks(quiz(), [{ option: 0 }]).entry;
+    expect(evaluateSubmit(quiz(), 1, wrong, now, opaque, { simpleMode: true }).entry).toMatchObject({ done: true, answer: 0, correct: false, points: 0 });
+    const right = clicks(quiz(), [{ option: 1 }]).entry;
+    expect(evaluateSubmit(quiz(), 0, right, now, opaque, { simpleMode: true }).entry).toMatchObject({ done: true, answer: 1, correct: true, points: 1 });
+  });
+
+  it('wpis sprzed D-204 (próby do skutku): zapis liczy pierwszą próbę; widok po odświeżeniu - tylko pierwsza próba', () => {
+    const legacy: BlockEntry = { type: 'QUIZ', done: false, checks: [{ item: '0', correct: false }, { item: '1', correct: true }] } as BlockEntry;
+    expect(evaluateSubmit(quiz(), 1, legacy, now, opaque, { simpleMode: true }).entry).toMatchObject({ answer: 0, correct: false, points: 0 });
+    const view = checksView(quiz(), legacy, opaque);
+    expect(view.checks).toHaveLength(1);
+    expect(view.checks[0]).toMatchObject({ item: 0, result: 'bad' });
+    expect(view).not.toHaveProperty('hint');
   });
 });
 
@@ -69,28 +105,29 @@ describe('evaluateCheck: wielokrotny wybór (D-158)', () => {
       ],
     }) as unknown as Block;
 
-  it('trafienie = dokładnie zbiór poprawnych; ocena i zdanie tylko dla zaznaczonych, bez zdradzania brakującej poprawnej', () => {
-    const { entry, responses } = clicks(multi(), [{ options: [0] }, { options: [2, 0, 1] }, { options: [2, 0] }]);
-    // Sama jedna poprawna - „bad”, ale brakująca (2) nie jest w odpowiedzi.
-    expect(responses[0]).toEqual({ blockId: 'wybor', result: 'bad', feedback: '', done: false, options: [{ option: 0, result: 'good', feedback: `${SECRET_MARKER}-a` }] });
-    expect(responses[1].result).toBe('bad');
-    expect(responses[1].options).toEqual([
-      { option: 0, result: 'good', feedback: `${SECRET_MARKER}-a` },
-      { option: 1, result: 'bad', feedback: `${SECRET_MARKER}-b` },
-      { option: 2, result: 'good', feedback: `${SECRET_MARKER}-c` },
-    ]);
-    expect(responses[2]).toMatchObject({ result: 'good', done: true });
-    // Próba zapisana jako posortowany zbiór - kolejność kliknięć bez znaczenia.
-    expect(entry.checks).toEqual([
-      { item: '0', correct: false },
-      { item: '0,1,2', correct: false },
-      { item: '0,2', correct: true },
-    ]);
+  it('dobrze = dokładnie zbiór poprawnych; jedna próba rozstrzyga - oceny zaznaczonych i brakujące poprawne (klucz po rozstrzygnięciu)', () => {
+    const { entry, responses } = clicks(multi(), [{ options: [1, 0] }]);
+    expect(responses[0]).toEqual({
+      blockId: 'wybor',
+      result: 'bad',
+      feedback: '',
+      done: true,
+      options: [
+        { option: 0, result: 'good', feedback: `${SECRET_MARKER}-a`, picked: true },
+        { option: 1, result: 'bad', feedback: `${SECRET_MARKER}-b`, picked: true },
+        { option: 2, result: 'good', feedback: `${SECRET_MARKER}-c`, picked: false },
+      ],
+    });
+    // Niezaznaczona błędna (3) - bez oceny. Próba zapisana jako posortowany zbiór.
+    expect(entry.checks).toEqual([{ item: '0,1', correct: false }]);
+    expect(clicks(multi(), [{ options: [2, 0] }]).responses[0]).toMatchObject({ result: 'good', done: true });
   });
 
-  it('ten sam zbiór drugi raz (w innej kolejności), powtórzony indeks, indeks spoza bloku, pusty zbiór, pojedynczy `option` - 400', () => {
-    const { entry } = clicks(multi(), [{ options: [1, 0] }]);
-    expect(() => evaluateCheck(multi(), { options: [0, 1] }, entry, now, opaque, true)).toThrow('Ta odpowiedź była już sprawdzona');
+  it('ponowna próba - zapisane rozstrzygnięcie; powtórzony indeks, indeks spoza bloku, pusty zbiór, pojedynczy `option` - 400', () => {
+    const first = clicks(multi(), [{ options: [1, 0] }]);
+    const again = evaluateCheck(multi(), { options: [0, 2] }, first.entry, now, opaque, true);
+    expect(again.response).toEqual(first.responses[0]);
+    expect(again.entry.checks).toEqual([{ item: '0,1', correct: false }]);
     for (const bad of [{ options: [0, 0] }, { options: [4] }, { options: [] }, { option: 0 }, { options: [0], option: 1 }, { options: ['0'] }]) {
       expect(() => evaluateCheck(multi(), bad, undefined, now, opaque, true)).toThrow(BadRequestException);
     }
@@ -98,20 +135,17 @@ describe('evaluateCheck: wielokrotny wybór (D-158)', () => {
     expect(() => evaluateCheck(quiz(), { options: [1] }, undefined, now, opaque, true)).toThrow(BadRequestException);
   });
 
-  it('po trafieniu kolejna próba - 400; zapis bloku po trafieniu, wynik z pierwszej próby, bez pola `answer`', () => {
-    const firstWrong = clicks(multi(), [{ options: [0] }, { options: [0, 2] }]).entry;
-    expect(() => evaluateCheck(multi(), { options: [0, 2, 3] }, firstWrong, now, opaque, true)).toThrow('Ten wybór jest już rozstrzygnięty');
-    const saved = evaluateSubmit(multi(), undefined, firstWrong, now, opaque, { simpleMode: true }).entry;
+  it('zapis bloku po „Sprawdź” (także zła próba), wynik z tej próby, bez pola `answer`; bez próby - 400', () => {
+    const wrong = clicks(multi(), [{ options: [0] }]).entry;
+    const saved = evaluateSubmit(multi(), undefined, wrong, now, opaque, { simpleMode: true }).entry;
     expect(saved).toMatchObject({ done: true, correct: false, points: 0 });
     expect(saved.answer).toBeUndefined();
-    const firstRight = clicks(multi(), [{ options: [2, 0] }]).entry;
-    expect(evaluateSubmit(multi(), undefined, firstRight, now, opaque, { simpleMode: true }).entry).toMatchObject({ correct: true, points: 1 });
-    expect(() => evaluateSubmit(multi(), undefined, clicks(multi(), [{ options: [1] }]).entry, now, opaque, { simpleMode: true })).toThrow(
-      'Najpierw wybierz poprawną odpowiedź',
-    );
+    const right = clicks(multi(), [{ options: [2, 0] }]).entry;
+    expect(evaluateSubmit(multi(), undefined, right, now, opaque, { simpleMode: true }).entry).toMatchObject({ correct: true, points: 1 });
+    expect(() => evaluateSubmit(multi(), undefined, undefined, now, opaque, { simpleMode: true })).toThrow('Najpierw zaznacz odpowiedź i kliknij „Sprawdź”');
   });
 
-  it('widok prób po odświeżeniu strony: zbiór indeksów i ocena każdej zaznaczonej - jak w odpowiedzi /check', () => {
+  it('widok próby po odświeżeniu strony: zbiór indeksów i oceny - jak w odpowiedzi /check', () => {
     const { entry } = clicks(multi(), [{ options: [1, 0] }]);
     expect(checksView(multi(), entry, opaque)).toEqual({
       checks: [
@@ -120,8 +154,9 @@ describe('evaluateCheck: wielokrotny wybór (D-158)', () => {
           result: 'bad',
           feedback: '',
           options: [
-            { option: 0, result: 'good', feedback: `${SECRET_MARKER}-a` },
-            { option: 1, result: 'bad', feedback: `${SECRET_MARKER}-b` },
+            { option: 0, result: 'good', feedback: `${SECRET_MARKER}-a`, picked: true },
+            { option: 1, result: 'bad', feedback: `${SECRET_MARKER}-b`, picked: true },
+            { option: 2, result: 'good', feedback: `${SECRET_MARKER}-c`, picked: false },
           ],
         },
       ],
@@ -132,10 +167,8 @@ describe('evaluateCheck: wielokrotny wybór (D-158)', () => {
     expect(() => evaluateSubmit(multi(), 0, undefined, now, opaque, { simpleMode: false })).toThrow('Ten blok nie przyjmuje takiej odpowiedzi');
   });
 
-  it('podpowiedź po 2 błędnych próbach (zbiorach)', () => {
-    const { responses } = clicks(multi(), [{ options: [0] }, { options: [1] }]);
-    expect(responses[0].hint).toBeUndefined();
-    expect(responses[1].hint).toBe(`${SECRET_MARKER}-prosty-hint`);
+  it('bez podpowiedzi - jedna próba (D-204)', () => {
+    expect(clicks(multi(), [{ options: [1] }]).responses[0].hint).toBeUndefined();
   });
 });
 

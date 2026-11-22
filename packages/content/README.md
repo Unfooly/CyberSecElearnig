@@ -200,9 +200,10 @@ włącza ostrzejszą walidację - **błędy przy budowaniu treści**, nie ostrze
   każdy inny typ to błąd (w tym `ORDERING`, `INTERROGATION`, `CALL_RECORDING`, `LIVE_CALL`, `OSINT_SPOT`); żadnego limitu czasu;
 - polecenie (`prompt`, `tip`) najwyżej 90 znaków i jedno zdanie (bez drugiego zdania po `.`/`!`/`?`/`…` i bez nowej linii - skróty z kropką
   w środku, np. „np. kliknij”, też są odrzucane: pisz bez nich); scena wymaga własnego `tip`;
-- `QUIZ`: 2-3 odpowiedzi, dokładnie jedna `correct: true`, każda (także poprawna) z `feedback` ≤ 140 znaków, `hint` (podpowiedź po 2 błędach);
-  z `"multiple": true` (wielokrotny wybór, D-158, **tylko** w trybie prostym): 3-6 odpowiedzi, co najmniej jedna poprawna i jedna błędna,
-  `feedback` i `hint` jak wyżej - gracz zaznacza pola i „Sprawdź”, trafienie = dokładnie wszystkie poprawne;
+- `QUIZ`: 2-3 odpowiedzi, dokładnie jedna `correct: true`, każda (także poprawna) z `feedback` ≤ 140 znaków (gracz widzi zdanie przy
+  zaznaczonej odpowiedzi i przy poprawnej - D-204), `hint` wymagany, ale **od D-204 w QUIZ nieużywany** (jedna próba - nie ma kiedy go
+  pokazać; zostaje na krok „Powtórz quiz”); z `"multiple": true` (wielokrotny wybór, D-158, **tylko** w trybie prostym): 3-6 odpowiedzi, co
+  najmniej jedna poprawna i jedna błędna, `feedback` i `hint` jak wyżej - dobrze = dokładnie wszystkie poprawne;
 - `VIDEO` (D-159): tylko plik z potoku zasobów - `src` (mp4/webm, ścieżka względna jak grafiki, osobny plik na język `{ pl, en }`) i
   opcjonalny `poster`; zewnętrzny `url` to błąd. Poza trybem prostym blok ma dokładnie jedno z `url`/`src`, a `poster` tylko przy `src`.
   Odtwarzacz: ramka 16:9 wpisana w obszar bloku, „Dalej” po końcu filmu, przewijanie do przodu dopiero po pierwszym obejrzeniu;
@@ -211,9 +212,10 @@ włącza ostrzejszą walidację - **błędy przy budowaniu treści**, nie ostrze
   sceny poziomej;
 - `SWIPE_SORT`: polecenie jak wyżej i `hint`.
 
-Odtwarzacz w trybie prostym: każde kliknięcie wyboru i każda karta są oceniane od razu przez serwer (`POST /courses/:id/blocks/:blockId/check`
-- „Dobrze”/„Nie tym razem” i zdanie z `feedback`), po 2 błędach w bloku stała podpowiedź (`hint`), cały tekst modułu min. 16 px, bez wyniku w
-blokach (ekran wyniku po zapisie pomijany). Wybór: próby do skutku, „Dalej” po trafieniu, wynik z **pierwszej** próby. Tryb prosty jest
+Odtwarzacz w trybie prostym: odpowiedzi i karty ocenia serwer (`POST /courses/:id/blocks/:blockId/check` - „Dobrze”/„Nie tym razem” i
+zdanie z `feedback`), cały tekst modułu min. 16 px, bez wyniku w blokach (ekran wyniku po zapisie pomijany). Pytanie quizu (D-204): klik
+zaznacza, „Sprawdź” wysyła - **jedna próba** rozstrzyga, potem zaznaczone i poprawne z oceną i zdaniem, „Dalej” od razu, wynik z tej próby.
+SWIPE_SORT: każda karta raz, po 2 błędach w bloku stała podpowiedź (`hint`). Tryb prosty jest
 częścią wersji kursu (`course_versions.simpleMode`) - włączenie go przy tej samej treści tworzy nową wersję.
 
 `SWIPE_SORT` (oceniany, domyślna waga 1, każdy moduł v6): `prompt`, `cards[]` (2-12) `{ id, channel: "sms" | "chat" | "situation", from?,

@@ -80,7 +80,7 @@ describe('moduł 3 „Komunikatory i SMS-y” - treść', () => {
     expect(block('trzy-pytania').text).toContain('Adam z działu IT');
   });
 
-  it('pytania: wielokrotny wybór w trzech (co najmniej jedna zła), smishing - jedna dobra; podpowiedź po dwóch błędach', () => {
+  it('pytania: wielokrotny wybór w trzech (co najmniej jedna zła), smishing - jedna dobra; podpowiedź wymagana (D-204: dziś nieużywana)', () => {
     const options = (id: string) => block(id).options as Option[];
     for (const id of QUIZZES) expect(typeof block(id).hint).toBe('string');
     for (const id of ['prawda', 'niebezpieczne', 'film']) {

@@ -1,8 +1,8 @@
 // E2E w przeglądarce (Playwright) - pełne przejście modułu 4 („Shadow IT”, do D-172 „Na skróty”; packages/content/modules/na-skroty, shadow IT, tryb prosty
 // D-132) zaimportowanego PRAWDZIWYM CLI, na wzór scripts/e2e-module-03.mjs (org i pracownik przez Prisma, `next dev`, sprzątanie tylko
 // kursu stworzonego przez ten przebieg). Cel - przebieg według nagrania właściciela (D-201): ekran startu (D-163), po kolei bloki z
-// module.json - ekrany NARRATIVE z ilustracją (D-200), pytania w monitorze z ilustracją (najpierw zła odpowiedź - „Nie tym razem” i
-// zdanie z treści, potem dobra; wielokrotny wybór przez „Sprawdź”), tablica skutków (4 karty-dowody), a po ostatnim pytaniu - bez ekranu
+// module.json - ekrany NARRATIVE z ilustracją (D-200), pytania w monitorze z ilustracją (D-204: zaznaczenie i „Sprawdź”, jedna próba -
+// pierwsze pytanie źle: „Nie tym razem”, zdanie i poprawne na zielono; kolejne dobrze), tablica skutków (4 karty-dowody), a po ostatnim pytaniu - bez ekranu
 // raportu (D-169) - ekran końca (D-165) z trzema zasadami na wynos i okienkiem nagrody (D-199). Bez błędów strony, konsoli i 5xx, a w
 // odpowiedziach API nigdy pola `correct`.
 //
@@ -177,6 +177,7 @@ try {
   };
 
   // --- Ekrany według nagrania właściciela (D-201): po kolei bloki modułu ---------------------------------------------------------------
+  let quizzesSeen = 0;
   for (const block of MODULE.blocks) {
     if (block.type === 'SUMMARY') break;
     if (block.type === 'NARRATIVE') {
@@ -194,23 +195,24 @@ try {
       const wrong = block.options.find((option) => !option.correct);
       const rights = block.options.filter((option) => option.correct);
       const option = (o) => page.getByTestId(multi ? 'simple-multi-option' : 'simple-option').filter({ hasText: o.text });
-      await option(wrong).click();
-      if (multi) await page.getByTestId('simple-multi-check').click();
-      const bad = await feedbackIs('bad');
-      // Zdanie z treści: przy pojedynczym wyborze w ogólnym komunikacie, przy wielokrotnym - przy zaznaczonej odpowiedzi.
-      const badSentence = multi ? ((await option(wrong).getByTestId('simple-multi-feedback').textContent()) ?? '') : bad;
-      step(`QUIZ ${block.id}: zła odpowiedź - „Nie tym razem” i zdanie z treści`, bad.startsWith('Nie tym razem') && badSentence.includes(wrong.feedback), `${bad} | ${badSentence}`);
-      await shot(`pytanie-${block.id}-zle`);
-      if (multi) {
-        await option(wrong).click();
-        for (const right of rights) await option(right).click();
-        await page.getByTestId('simple-multi-check').click();
+      const sentence = async (o) => (await option(o).getByTestId(multi ? 'simple-multi-feedback' : 'simple-option-feedback').textContent()) ?? '';
+      // D-204: zaznaczenie i „Sprawdź” - jedna próba rozstrzyga. Pierwsze pytanie źle (ocena + poprawne na zielono), kolejne dobrze.
+      const answerWrong = quizzesSeen++ === 0;
+      for (const picked of answerWrong ? [wrong] : rights) await option(picked).click();
+      await page.getByTestId(multi ? 'simple-multi-check' : 'simple-check').click();
+      if (answerWrong) {
+        const bad = await feedbackIs('bad');
+        const rightsShown = await Promise.all(rights.map(async (right) => (await option(right).getAttribute('data-result')) === 'good' && (await sentence(right)).includes(right.feedback)));
+        step(
+          `QUIZ ${block.id}: zła odpowiedź - „Nie tym razem”, jej zdanie i poprawne odpowiedzi na zielono ze zdaniami`,
+          bad.startsWith('Nie tym razem') && (await sentence(wrong)).includes(wrong.feedback) && rightsShown.every(Boolean),
+          bad,
+        );
+        await shot(`pytanie-${block.id}-zle`);
       } else {
-        await option(rights[0]).click();
+        const good = await feedbackIs('good');
+        step(`QUIZ ${block.id}: dobra odpowiedź - „Dobrze” i zdanie z treści`, good.startsWith('Dobrze') && (await sentence(rights[0])).includes(rights[0].feedback), good);
       }
-      const good = await feedbackIs('good');
-      const goodSentence = multi ? ((await option(rights[0]).getByTestId('simple-multi-feedback').textContent()) ?? '') : good;
-      step(`QUIZ ${block.id}: dobra odpowiedź - „Dobrze” i zdanie z treści`, good.startsWith('Dobrze') && goodSentence.includes(rights[0].feedback), `${good} | ${goodSentence}`);
       await goNext();
       continue;
     }
@@ -255,6 +257,8 @@ try {
   // --- Raport (SUMMARY) bez ekranu - zapisuje się sam (D-169), potem ekran końca (D-165) z trzema zasadami na wynos ---------------
   const finishedBody = await (await completion).json();
   step('Zakończenie: kurs ukończony (status COMPLETED) bez ekranu raportu', finishedBody.status === 'COMPLETED', JSON.stringify({ status: finishedBody.status, score: finishedBody.score }));
+  // D-204: pierwsze pytanie źle - jedna próba się liczy (wynik < 100, bez „Najpierw pytam IT”).
+  step('Wynik < 100% po złej pierwszej odpowiedzi (D-204)', typeof finishedBody.score === 'number' && finishedBody.score < 100, String(finishedBody.score));
   const rules = [
     'Nowy program, strona albo AI do pracy? Najpierw zapytaj IT – pomogą znaleźć bezpieczne narzędzie.',
     'Dane firmy i klientów tylko w firmowych narzędziach – także w AI.',

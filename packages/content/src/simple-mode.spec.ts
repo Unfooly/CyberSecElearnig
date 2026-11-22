@@ -59,7 +59,7 @@ describe('tryb prosty (simpleMode)', () => {
     const longFeedback = mutate((m) => (byType(m, 'QUIZ').options[0].feedback = 'x'.repeat(141)));
     expect(errorsOf(longFeedback)).toMatch(/options\[0\]\.feedback: tryb prosty - najwyżej 140 znaków/);
     const noHint = mutate((m) => delete byType(m, 'QUIZ').hint);
-    expect(errorsOf(noHint)).toMatch(/hint: tryb prosty - podpowiedź po 2 błędach jest wymagana/);
+    expect(errorsOf(noHint)).toMatch(/hint: tryb prosty - podpowiedź jest wymagana \(w pytaniu quizu dziś nieużywana, D-204\)/);
   });
 
   it('D-158 wielokrotny wybór: 3-6 odpowiedzi, co najmniej jedna poprawna i jedna błędna, feedback i podpowiedź jak w wyborze', () => {

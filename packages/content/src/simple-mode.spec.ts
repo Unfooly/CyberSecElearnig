@@ -231,9 +231,10 @@ describe('SWIPE_SORT w projekcji do klienta', () => {
     }
   });
 
-  it('D-151: moduł 3 bez zmian - blok bez `labels` (domyślne etykiety w odtwarzaczu), karty-wiadomości z nadawcą', () => {
-    const lancuszek = parseModule(JSON.parse(readFileSync(join(__dirname, '..', 'modules', 'lancuszek', 'module.json'), 'utf8')));
-    const block = lancuszek.blocks.find((b) => b.type === 'SWIPE_SORT') as AnyModule;
+  it('D-151: blok bez `labels` (domyślne etykiety w odtwarzaczu), karty-wiadomości z nadawcą', () => {
+    // Do D-203 sprawdzane na module 3 (skrzynka Oli); nowa wersja modułu 3 nie ma SWIPE_SORT - teraz fikstura trybu prostego.
+    const block = byType(simpleModule(), 'SWIPE_SORT');
+    expect(block).not.toHaveProperty('labels');
     const client = toClientBlock(block as never, { shuffleSeed: () => [1, 2, 3, 4], opaqueId: (b, i) => `${b}-${i}` }) as AnyModule;
     expect(client).not.toHaveProperty('labels');
     for (const card of client.cards as AnyModule[]) {

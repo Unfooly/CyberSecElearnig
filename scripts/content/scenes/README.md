@@ -236,7 +236,12 @@ i ekran logowania są generyczne - bez logo i nazwy aplikacji, adresy wyłączni
 |---|---|---|
 | `chatPhone` | telefon z rozmową na komunikatorze | `wiadomosc`, `link`, `logowanie`; sloty `slot-kontakt`, `slot-wiadomosc`, `slot-link-tytul`, `slot-link-adres`, `slot-logowanie`, `slot-czas-1`/`-2`/`-3` (godziny pod wiadomościami) |
 | `loginScreen` | ekran logowania z linku (zbliżenie), bez marki | sloty `slot-adres`, `slot-naglowek`, `slot-pole-login`, `slot-pole-haslo`, `slot-przycisk` |
+| `strangerChatPhone` | (D-203) rozmowa z „Martą” w nowym komunikatorze | `profil` (nagłówek + pasek „Nieznany numer”), `pytania`, `odpowiedz` (wysłana), `plik`; sloty `slot-kontakt`, `slot-baner`, `slot-pytania`, `slot-odpowiedz`, `slot-plik-nazwa`, `slot-plik-opis`, `slot-czas-1`/`-2`/`-3` |
+| `smsPhone` | (D-203) SMS „konto wygasa” (smishing) | `nadawca` (nagłówek + pigułka daty), `presja`, `link`, `stop` (trzy wiersze jednej wiadomości); sloty `slot-nadawca`, `slot-data`, `slot-presja`, `slot-link`, `slot-stop` |
 | `chatPhoneIcon` | telefon z dymkami bez słów (miniatura modułu) | |
+
+Sceny D-203 (`examples/lancuszek/{komunikator,sms}{,-pion}.json`): pozycje `textBox` liczone ręcznie ze slotów - x sceny = x telefonu + slot.x ×
+skala (poziomo: telefon x 534, y 6, skala 0,76; pionowo: x 47,5, y 52, skala 1,15). Stara wersja (`chatPhone`, `loginScreen`) - do usunięcia (B-184).
 
 ### Klocki modułu 4 (`props-naskroty.ts`, „Na skróty”, shadow IT, tryb prosty, D-153)
 

@@ -1,0 +1,57 @@
+{
+ "width": 1600,
+ "height": 1000,
+ "phone": "panorama",
+ "background": {
+  "flat": true,
+  "wall": "#D9C3A5"
+ },
+ "strings": {
+  "pl": {
+   "nadawca": "KONTO-INFO",
+   "data": "Dziś 8:02",
+   "presja": "Twoje konto wygasa dziś! Bez potwierdzenia stracisz dostęp.",
+   "link-opis": "Potwierdź tutaj:",
+   "link": "konto.test/x7Rk",
+   "stop": "Aby zrezygnować z powiadomień, odpisz STOP na numer 7XXXX."
+  }
+ },
+ "items": [
+  {
+   "id": "sloje",
+   "prop": "woodGrain",
+   "x": 0,
+   "y": 0,
+   "params": {
+    "w": 1600,
+    "h": 1000
+   }
+  },
+  {
+   "id": "kubek",
+   "prop": "mugTop",
+   "x": 250,
+   "y": 640,
+   "scale": 1.2
+  },
+  {
+   "id": "telefon",
+   "prop": "smsPhone",
+   "x": 534,
+   "y": 6,
+   "scale": 0.76,
+   "partHotspots": {
+    "nadawca": "nadawca",
+    "presja": "presja",
+    "link": "link",
+    "stop": "stop"
+   }
+  },
+  {"id":"tekst-nadawca","prop":"textBox","x":702.7,"y":97.2,"phoneScreen":true,"evidence":"nadawca","params":{"w":304,"h":60.8,"text":{"$t":"nadawca"},"size":33.4,"valign":"middle","bold":true,"color":"#FFFFFF"}},
+  {"id":"tekst-data","prop":"textBox","x":683,"y":203.6,"phoneScreen":true,"evidence":"nadawca","params":{"w":234.1,"h":33.4,"text":{"$t":"data"},"size":26,"align":"middle","valign":"middle","color":"#5A607A"}},
+  {"id":"tekst-presja","prop":"textBox","x":610,"y":290.2,"phoneScreen":true,"evidence":"presja","params":{"w":380,"h":161.1,"text":{"$t":"presja"},"size":30,"valign":"middle","color":"#2B2440"}},
+  {"id":"tekst-link-opis","prop":"textBox","x":610,"y":486,"phoneScreen":true,"evidence":"link","params":{"w":380,"h":64,"text":{"$t":"link-opis"},"size":30,"valign":"middle","color":"#2B2440"}},
+  {"id":"tekst-link","prop":"textBox","x":610,"y":552,"phoneScreen":true,"evidence":"link","params":{"w":380,"h":64,"text":{"$t":"link"},"size":30,"valign":"middle","bold":true,"color":"#4E40B8"}},
+  {"id":"tekst-stop","prop":"textBox","x":610,"y":670.2,"phoneScreen":true,"evidence":"stop","params":{"w":380,"h":161.1,"text":{"$t":"stop"},"size":30,"valign":"middle","color":"#2B2440"}}
+ ]
+}

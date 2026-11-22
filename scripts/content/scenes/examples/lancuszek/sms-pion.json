@@ -1,0 +1,49 @@
+{
+ "width": 900,
+ "height": 1600,
+ "background": {
+  "flat": true,
+  "wall": "#D9C3A5"
+ },
+ "strings": {
+  "pl": {
+   "nadawca": "KONTO-INFO",
+   "data": "Dziś 8:02",
+   "presja": "Twoje konto wygasa dziś! Bez potwierdzenia stracisz dostęp.",
+   "link-opis": "Potwierdź tutaj:",
+   "link": "konto.test/x7Rk",
+   "stop": "Aby zrezygnować z powiadomień, odpisz STOP na numer 7XXXX."
+  }
+ },
+ "items": [
+  {
+   "id": "sloje",
+   "prop": "woodGrain",
+   "x": 0,
+   "y": 0,
+   "params": {
+    "w": 900,
+    "h": 1600
+   }
+  },
+  {
+   "id": "telefon",
+   "prop": "smsPhone",
+   "x": 47.5,
+   "y": 52,
+   "scale": 1.15,
+   "partHotspots": {
+    "nadawca": "nadawca",
+    "presja": "presja",
+    "link": "link",
+    "stop": "stop"
+   }
+  },
+  {"id":"tekst-nadawca","prop":"textBox","x":302.8,"y":190,"phoneScreen":true,"evidence":"nadawca","params":{"w":460,"h":92,"text":{"$t":"nadawca"},"size":50.6,"valign":"middle","bold":true,"color":"#FFFFFF"}},
+  {"id":"tekst-data","prop":"textBox","x":272.9,"y":346,"phoneScreen":true,"evidence":"nadawca","params":{"w":354.2,"h":60,"text":{"$t":"data"},"size":43,"align":"middle","valign":"middle","color":"#5A607A"}},
+  {"id":"tekst-presja","prop":"textBox","x":162.5,"y":482.1,"phoneScreen":true,"evidence":"presja","params":{"w":575,"h":243.8,"text":{"$t":"presja"},"size":46,"valign":"middle","color":"#2B2440"}},
+  {"id":"tekst-link-opis","prop":"textBox","x":162.5,"y":775,"phoneScreen":true,"evidence":"link","params":{"w":575,"h":80,"text":{"$t":"link-opis"},"size":46,"valign":"middle","color":"#2B2440"}},
+  {"id":"tekst-link","prop":"textBox","x":162.5,"y":860,"phoneScreen":true,"evidence":"link","params":{"w":575,"h":80,"text":{"$t":"link"},"size":46,"valign":"middle","bold":true,"color":"#4E40B8"}},
+  {"id":"tekst-stop","prop":"textBox","x":162.5,"y":1057.1,"phoneScreen":true,"evidence":"stop","params":{"w":575,"h":243.8,"text":{"$t":"stop"},"size":46,"valign":"middle","color":"#2B2440"}}
+ ]
+}

@@ -35,7 +35,12 @@ describe('tekst czytany przez lektora bez cyfr (fix/tts-numbers, D-109)', () => 
 
   it.each(modules)('%s: żadne nagranie nie ma cyfr w tekście dla TTS (liczby słownie w spokenText)', (slug) => {
     const raw = JSON.parse(readFileSync(join(modulesDir, slug, 'module.json'), 'utf8'));
-    expect(collectNarrations(raw).length).toBeGreaterThan(0);
+    // Moduł bez lektora jest dozwolony (moduł 3 po D-203 - nagrania później, B-184); test wtedy nie ma czego sprawdzać.
     expect(spokenDigits(raw)).toEqual([]);
+  });
+
+  it('test widzi nagrania (zbieranie narracji działa na prawdziwych modułach)', () => {
+    const total = modules.reduce((sum, slug) => sum + collectNarrations(JSON.parse(readFileSync(join(modulesDir, slug, 'module.json'), 'utf8'))).length, 0);
+    expect(total).toBeGreaterThan(10);
   });
 });

@@ -1,21 +1,21 @@
 {
   "schemaVersion": 6,
   "slug": "lancuszek",
-  "title": "Przejęte konto",
-  "subtitle": "Przejęte konto koleżanki, link do „filmu” i prośby o kody",
+  "title": "Komunikatory i SMS-y",
+  "subtitle": "Fałszywy profil, plik od „znajomej”, smishing i łańcuszek przejętych kont",
   "category": "PHISHING_SOCIAL_ENGINEERING",
   "level": "basic",
-  "durationMinutes": 8,
+  "durationMinutes": 7,
   "mandatory": true,
   "simpleMode": true,
   "locales": [
     "pl"
   ],
   "objectives": [
-    "Rozpoznać, że wiadomość od znajomego może wysłać oszust, który przejął jego konto.",
-    "Nie logować się przez link z wiadomości – wejść samemu przez aplikację lub stronę.",
-    "Dziwną prośbę o pieniądze albo kod sprawdzić innym kanałem, np. telefonem na znany numer.",
-    "Nie podawać nikomu kodu z SMS-a."
+    "Wiedzieć, że profil w komunikatorze można podrobić albo przejąć – także profil znajomego.",
+    "Nie instalować aplikacji z linku w SMS-ie i nie otwierać plików od nieznajomych – w razie wątpliwości zapytać IT.",
+    "Nie podawać w czacie prywatnych informacji, które może wykorzystać oszust.",
+    "Rozpoznać smishing: podrobiony nadawca, pośpiech, skrócony link, prośba o odpowiedź."
   ],
   "thumbnail": "assets/lancuszek/images/miniatura.d523ac66.webp",
   "caseNumber": 3,
@@ -27,375 +27,407 @@
   },
   "blocks": [
     {
-      "id": "odprawa",
-      "type": "BRIEFING",
-      "title": "Odprawa",
-      "steps": [
+      "id": "zaproszenie",
+      "type": "NARRATIVE",
+      "title": "Zaproszenie od „Marty”",
+      "text": "Wieczorem Ola Malec z księgowości dostaje SMS-a z nieznanego numeru: „Hej, tu Marta z liceum! Przeszłam na nowy komunikator – pobierz go z linku, to pogadamy”.\n\nOla dawno nie miała kontaktu z Martą. Klika link i instaluje aplikację.",
+      "illustration": {
+        "image": "assets/lancuszek/images/zaproszenie.4dafd788.webp",
+        "alt": "Ola wieczorem na ławce w parku patrzy w telefon; na ekranie dymek wiadomości i duży fioletowy przycisk pobierania."
+      }
+    },
+    {
+      "id": "nowy-komunikator",
+      "type": "NARRATIVE",
+      "title": "Nowy komunikator",
+      "text": "„Marta” pisze, że niedaleko otworzyli włoską restaurację, i dopytuje, gdzie Ola teraz pracuje. Ola odpowiada bez zastanowienia.\n\nPo chwili przychodzi plik **Menu.docx**: „Zerknij, w sobotę idziemy!”.",
+      "illustration": {
+        "image": "assets/lancuszek/images/nowy-komunikator.f3d1c2a6.webp",
+        "alt": "Dłonie trzymają telefon z otwartym komunikatorem: kilka dymków rozmowy i karta z niebieską ikoną dokumentu."
+      }
+    },
+    {
+      "id": "wirus",
+      "type": "NARRATIVE",
+      "title": "Plik z niespodzianką",
+      "text": "W domu Ola otwiera menu na służbowym laptopie. Dokument jest pusty, a laptop zaczyna dziwnie działać – razem z plikiem przyszedł złośliwy program.\n\nTakie pliki można wysłać przez każdy komunikator – także z konta kogoś, kogo znasz.",
+      "illustration": {
+        "image": "assets/lancuszek/images/wirus.4a7f8429.webp",
+        "alt": "Ola w domu odsuwa się zaskoczona od laptopa, na którego ekranie świeci czerwony trójkąt ostrzegawczy; za oknem postać w kapturze."
+      }
+    },
+    {
+      "id": "rozmowa",
+      "type": "SCENE_HOTSPOTS",
+      "title": "Co było nie tak?",
+      "tip": "Otwórz cztery miejsca w rozmowie Oli z „Martą”.",
+      "image": "assets/lancuszek/scenes/pl/komunikator.cc30fd3c.svg",
+      "imageAlt": "Telefon Oli, rozmowa z „Martą”: pasek „Nieznany numer”; Marta o 18:02: „Hej, tu Marta! Gdzie teraz pracujesz?”; Ola o 18:05: „Na Słonecznej 5. W piątek mam wolne, wyjeżdżamy!”; o 18:06 plik Menu.docx, 48 KB.",
+      "imagePortrait": "assets/lancuszek/scenes/pl/komunikator-pion.65694592.svg",
+      "portraitHotspots": [
         {
-          "kind": "typewriter",
-          "text": "Wtorek rano. Dzwoni Ola Malec z księgowości: koleżanka Kasia przysłała jej link do „filmu”, a chwilę później prośbę o kod BLIK. Ola nie wie, co z tym zrobić. Sprawdź jej telefon i pomóż jej nie dać się wciągnąć w łańcuszek.",
-          "cta": "Odbierz telefon",
-          "narration": {
-            "voice": "komisarz",
-            "text": "Wtorek rano. Dzwoni Ola Malec z księgowości. Koleżanka Kasia przysłała jej link do filmu, a chwilę później prośbę o kod BLIK. Ola nie wie, co z tym zrobić. Sprawdź jej telefon i pomóż jej nie dać się wciągnąć w łańcuszek.",
-            "audioUrl": "audio/lancuszek/v1/odprawa/48e5be8399b98946.mp3",
-            "durationMs": 13653,
-            "cues": [
-              {
-                "text": "Wtorek rano.",
-                "startMs": 0
-              },
-              {
-                "text": "Dzwoni Ola Malec z księgowości.",
-                "startMs": 720
-              },
-              {
-                "text": "Koleżanka Kasia przysłała jej link do filmu, a chwilę później prośbę o kod BLIK.",
-                "startMs": 2902
-              },
-              {
-                "text": "Ola nie wie, co z tym zrobić.",
-                "startMs": 7779
-              },
-              {
-                "text": "Sprawdź jej telefon i pomóż jej nie dać się wciągnąć w łańcuszek.",
-                "startMs": 9230
-              }
-            ]
-          },
-          "image": "assets/lancuszek/scenes/pl/odprawa.b3b6523f.svg",
-          "alt": "Biurko detektywa: lampka, kubek i telefon na blacie. Na ekranie telefonu połączenie przychodzące – Ola Malec, księgowość.",
-          "portrait": {
-            "image": "assets/lancuszek/scenes/pl/odprawa-pion.1151b967.svg"
+          "id": "profil",
+          "x": 9,
+          "y": 9.2,
+          "width": 82,
+          "height": 18.3
+        },
+        {
+          "id": "pytania",
+          "x": 13.3,
+          "y": 27.9,
+          "width": 70.8,
+          "height": 17.5
+        },
+        {
+          "id": "odpowiedz",
+          "x": 15.9,
+          "y": 45.9,
+          "width": 70.8,
+          "height": 17.5
+        },
+        {
+          "id": "plik",
+          "x": 13.3,
+          "y": 63.8,
+          "width": 73.3,
+          "height": 19.7
+        }
+      ],
+      "hotspots": [
+        {
+          "id": "profil",
+          "label": "Nieznany numer",
+          "x": 34.6,
+          "y": 6.6,
+          "width": 30.8,
+          "height": 19.8,
+          "content": "Profil łatwo podrobić: wystarczy cudze imię i zdjęcie. Gdy ktoś pisze z nowego numeru, sprawdź go innym kanałem, np. dzwoniąc na znany numer.",
+          "evidence": true,
+          "required": true,
+          "note": {
+            "text": "„Marta” pisała z numeru spoza kontaktów – profil mógł być podróbką.",
+            "kind": "person"
+          }
+        },
+        {
+          "id": "pytania",
+          "label": "Pytanie o pracę",
+          "x": 36.2,
+          "y": 26.4,
+          "width": 26.6,
+          "height": 19.1,
+          "content": "Oszuści zbierają drobne informacje – gdzie pracujesz, w jakim dziale, w którym biurze – i wykorzystują je w kolejnych atakach.",
+          "evidence": true,
+          "required": true,
+          "note": {
+            "text": "„Marta” wypytywała o pracę Oli.",
+            "kind": "item"
+          }
+        },
+        {
+          "id": "odpowiedz",
+          "label": "Prywatne informacje",
+          "x": 37.2,
+          "y": 45.4,
+          "width": 26.6,
+          "height": 19.1,
+          "content": "Adres biura i informacja, kiedy dom będzie pusty, to cenne dane dla oszusta. Nie podawaj ich w czacie – nawet komuś, kto przedstawia się jako znajomy.",
+          "evidence": true,
+          "required": true,
+          "note": {
+            "text": "Ola podała adres biura i termin wyjazdu.",
+            "kind": "item"
+          }
+        },
+        {
+          "id": "plik",
+          "label": "Plik od „Marty”",
+          "x": 36.2,
+          "y": 64.4,
+          "width": 27.6,
+          "height": 21.4,
+          "content": "Plik z komunikatora może zawierać złośliwy program. Nie otwieraj go na służbowym sprzęcie, a w razie wątpliwości zapytaj IT.",
+          "evidence": true,
+          "required": true,
+          "note": {
+            "text": "Menu.docx od nieznajomej to złośliwy plik.",
+            "kind": "item"
           }
         }
       ]
     },
     {
-      "id": "telefon",
+      "id": "sms",
       "type": "SCENE_HOTSPOTS",
-      "title": "Telefon Oli",
-      "tip": "Wskaż trzy miejsca na ekranie, które powinny wzbudzić czujność.",
-      "narration": {
-        "text": "To rozmowa Oli z Kasią. Przyjrzyj się obu wiadomościom i linkowi.",
-        "audioUrl": "audio/lancuszek/v1/telefon/39610b68a92ef547.mp3",
-        "durationMs": 4551,
-        "cues": [
-          {
-            "text": "To rozmowa Oli z Kasią.",
-            "startMs": 0
-          },
-          {
-            "text": "Przyjrzyj się obu wiadomościom i linkowi.",
-            "startMs": 1788
-          }
-        ]
-      },
-      "image": "assets/lancuszek/scenes/pl/telefon-oli.83668f90.svg",
-      "imageAlt": "Telefon Oli: rozmowa z Kasią na komunikatorze – wiadomość „To Ty na tym filmie?” o 9:12, link „Film z imprezy” wideo-kasi.test/f/82 i o 9:13 druga wiadomość „Musisz się zalogować, inaczej nie puści”.",
-      "imagePortrait": "assets/lancuszek/scenes/pl/telefon-oli-pion.2bcbd815.svg",
+      "title": "SMS-y też",
+      "tip": "Wskaż cztery sygnały ostrzegawcze w tym SMS-ie.",
+      "image": "assets/lancuszek/scenes/pl/sms.dc782884.svg",
+      "imageAlt": "SMS od nadawcy KONTO-INFO, dziś 8:02: „Twoje konto wygasa dziś! Bez potwierdzenia stracisz dostęp. Potwierdź tutaj: konto.test/x7Rk. Aby zrezygnować z powiadomień, odpisz STOP na numer 7XXXX.”",
+      "imagePortrait": "assets/lancuszek/scenes/pl/sms-pion.9021560c.svg",
       "portraitHotspots": [
         {
-          "id": "wiadomosc",
+          "id": "nadawca",
+          "x": 9,
+          "y": 9.2,
+          "width": 82,
+          "height": 17.7
+        },
+        {
+          "id": "presja",
           "x": 13.3,
-          "y": 20.7,
-          "width": 70.8,
+          "y": 28.6,
+          "width": 73.3,
           "height": 18.3
         },
         {
           "id": "link",
           "x": 13.3,
-          "y": 38.7,
+          "y": 46.6,
           "width": 73.3,
-          "height": 26.9
+          "height": 18.3
         },
         {
-          "id": "logowanie",
+          "id": "stop",
           "x": 13.3,
-          "y": 65.3,
+          "y": 64.6,
           "width": 73.3,
           "height": 18.3
         }
       ],
       "hotspots": [
         {
-          "id": "wiadomosc",
-          "label": "Wiadomość od Kasi",
-          "x": 36.2,
-          "y": 18.8,
-          "width": 26.6,
-          "height": 19.8,
-          "content": "„To Ty na tym filmie?” – ciekawość i lekki niepokój to przynęta. Tak zaczyna się łańcuszek.",
+          "id": "nadawca",
+          "label": "Nazwa nadawcy",
+          "x": 34.6,
+          "y": 6.6,
+          "width": 30.8,
+          "height": 19.2,
+          "content": "Nazwę nadawcy SMS-a łatwo podrobić – wiadomość może udawać bank, kuriera albo znaną usługę. Oszustwo przez SMS to smishing.",
           "evidence": true,
           "required": true,
           "note": {
-            "text": "Wiadomość od Kasi gra na ciekawości: „To Ty na tym filmie?”.",
-            "kind": "item"
+            "text": "Nadawca KONTO-INFO – nazwę nadawcy SMS-a łatwo podrobić.",
+            "kind": "mail"
+          }
+        },
+        {
+          "id": "presja",
+          "label": "Pośpiech i groźba",
+          "x": 36.2,
+          "y": 27.2,
+          "width": 27.6,
+          "height": 19.8,
+          "content": "„Wygasa dziś”, „stracisz dostęp” – presja czasu ma sprawić, że klikniesz bez zastanowienia. Zachowaj spokój i sprawdź sprawę sam.",
+          "evidence": true,
+          "required": true,
+          "note": {
+            "text": "SMS straszy utratą konta „dziś”.",
+            "kind": "mail"
           }
         },
         {
           "id": "link",
-          "label": "Link do filmu",
+          "label": "Skrócony link",
           "x": 36.2,
-          "y": 37.8,
+          "y": 46.2,
           "width": 27.6,
-          "height": 29,
-          "content": "Adres wideo-kasi.test nie jest żadnym znanym serwisem z filmami – link prowadzi na obcą stronę. Kłódka w pasku adresu nie znaczy, że strona jest bezpieczna – oznacza tylko szyfrowane połączenie.",
+          "height": 19.8,
+          "content": "Nie wiesz, dokąd prowadzi taki link – na fałszywej stronie oszuści przejmują hasła. Wejdź sam przez aplikację albo stronę usługi.",
           "evidence": true,
           "required": true,
           "note": {
-            "text": "Link prowadzi na obcą stronę, nie do znanego serwisu.",
+            "text": "Link prowadzi na obcą stronę.",
             "kind": "web"
           }
         },
         {
-          "id": "logowanie",
-          "label": "Ponaglenie do logowania",
+          "id": "stop",
+          "label": "Odpisz STOP",
           "x": 36.2,
-          "y": 65.9,
+          "y": 65.2,
           "width": 27.6,
           "height": 19.8,
-          "content": "„Musisz się zalogować, inaczej nie puści” – Kasia ponagla, żeby zalogować się na stronie z linku. Tak oszuści zbierają hasła i przejmują kolejne konta.",
-          "media": {
-            "kind": "image",
-            "src": "assets/lancuszek/scenes/pl/logowanie-zoom.6e9acfba.svg",
-            "alt": "Strona wideo-kasi.test/login: nagłówek „Zaloguj się, aby obejrzeć film”, pola „E-mail lub telefon” i „Hasło”, przycisk „Zaloguj się”."
-          },
+          "content": "Odpowiedź na taki numer może słono kosztować, a do tego potwierdza oszustom, że Twój numer działa. Na takie SMS-y nie odpisuj.",
           "evidence": true,
           "required": true,
           "note": {
-            "text": "Kasia ponagla do logowania – strona z linku wyłudza login i hasło pod pretekstem filmu.",
-            "kind": "web"
+            "text": "Prośba o odpowiedź na numer specjalny.",
+            "kind": "mail"
           }
         }
       ]
     },
     {
-      "id": "zaloguj",
-      "type": "QUIZ",
-      "title": "Zaloguj się, aby obejrzeć",
-      "prompt": "Strona prosi o zalogowanie, żeby zobaczyć film – co robisz?",
-      "narration": {
-        "text": "Strona prosi o zalogowanie, żeby zobaczyć film. Co robisz?",
-        "audioUrl": "audio/lancuszek/v1/zaloguj/583b589df269d5a8.mp3",
-        "durationMs": 4180,
-        "cues": [
-          {
-            "text": "Strona prosi o zalogowanie, żeby zobaczyć film.",
-            "startMs": 0
-          },
-          {
-            "text": "Co robisz?",
-            "startMs": 3204
-          }
-        ]
-      },
-      "options": [
-        {
-          "text": "Loguję się, żeby zobaczyć film.",
-          "correct": false,
-          "feedback": "Hasło trafiłoby do oszusta, a z Twojego konta poszłyby kolejne linki."
-        },
-        {
-          "text": "Zamykam stronę i pytam Kasię innym kanałem, np. telefonicznie.",
-          "correct": true,
-          "feedback": "Tak – inny kanał pozwala sprawdzić, czy konto Kasi nie zostało przejęte."
-        },
-        {
-          "text": "Przesyłam link dalej, niech inni sprawdzą.",
-          "correct": false,
-          "feedback": "Tak właśnie rośnie łańcuszek – link trafia do kolejnych osób."
-        }
-      ],
-      "hint": "Zapytaj Kasię, ale nie przez ten sam czat."
+      "id": "lancuszek",
+      "type": "NARRATIVE",
+      "title": "Łańcuszek przez komunikator",
+      "text": "Tak działa częsty atak w komunikatorach:\n\n**1.** Znajomy przysyła film: „To Ty na tym nagraniu?”.\n\n**2.** Film „wymaga logowania” – strona wygląda jak prawdziwa, ale jest fałszywa.\n\n**3.** Oszust przejmuje Twoje konto i wysyła ten sam film wszystkim Twoim kontaktom.",
+      "illustration": {
+        "image": "assets/lancuszek/images/lancuszek.f15bc444.webp",
+        "alt": "Postać w kapturze trzyma telefon, z którego wylatują dziesiątki dymków z filmem i lecą po czerwonych przerywanych liniach do kontaktów."
+      }
     },
     {
-      "id": "wiadomosci",
-      "type": "SWIPE_SORT",
-      "title": "Skrzynka Oli",
-      "prompt": "Oceń każdą wiadomość: podejrzana czy w porządku?",
-      "narration": {
-        "text": "W skrzynce Oli jest więcej wiadomości. Przesuń każdą w lewo, jeśli jest podejrzana, albo w prawo, jeśli jest w porządku.",
-        "audioUrl": "audio/lancuszek/v1/wiadomosci/b921d1340c618951.mp3",
-        "durationMs": 7570,
-        "cues": [
-          {
-            "text": "W skrzynce Oli jest więcej wiadomości.",
-            "startMs": 0
-          },
-          {
-            "text": "Przesuń każdą w lewo, jeśli jest podejrzana, albo w prawo, jeśli jest w porządku.",
-            "startMs": 2415
-          }
-        ]
-      },
-      "cards": [
-        {
-          "id": "paczka",
-          "channel": "sms",
-          "from": "SzybkaPaczka",
-          "time": "9:41",
-          "text": "Twoja paczka czeka. Dopłać 1,99 zł: szybkapaczka.test/oplata",
-          "correct": "suspicious",
-          "feedback": "Mała dopłata przez link to typowa pułapka – sprawdź przesyłkę w aplikacji przewoźnika."
-        },
-        {
-          "id": "mama",
-          "channel": "sms",
-          "from": "+48 500 XXX XXX",
-          "time": "10:02",
-          "text": "Mamo, to mój nowy numer. Zapisz go i odpisz.",
-          "correct": "suspicious",
-          "feedback": "„Nowy numer” to częsty początek wyłudzenia – zadzwoń na stary numer dziecka."
-        },
-        {
-          "id": "kod",
-          "channel": "chat",
-          "from": "Marek",
-          "time": "10:15",
-          "text": "Wysłałem Ci kod przez pomyłkę, możesz mi go przesłać?",
-          "correct": "suspicious",
-          "feedback": "Kod z SMS-a to klucz do Twojego konta – nie przesyłasz go nikomu."
-        },
-        {
-          "id": "faktura",
-          "channel": "chat",
-          "from": "Kasia",
-          "time": "10:20",
-          "text": "Zerknij na fakturę, pilne.",
-          "attachment": "faktura.zip",
-          "correct": "suspicious",
-          "feedback": "Spakowana „faktura” od znajomej bez kontekstu może zawierać złośliwy program."
-        },
-        {
-          "id": "szef",
-          "channel": "chat",
-          "from": "Szef",
-          "time": "10:31",
-          "text": "Przenoszę spotkanie na 11:00. Ta sama sala.",
-          "correct": "ok",
-          "feedback": "Zwykła informacja bez linku, prośby o dane ani pośpiechu."
-        },
-        {
-          "id": "przychodnia",
-          "channel": "sms",
-          "from": "Przychodnia",
-          "time": "11:05",
-          "text": "Przypominamy o wizycie jutro o 8:30.",
-          "correct": "ok",
-          "feedback": "Przypomnienie bez linku i bez prośby o dane – w porządku."
-        }
-      ],
-      "hint": "Podejrzane są prośby o kod, pieniądze albo kliknięcie w link."
+      "id": "trzy-pytania",
+      "type": "NARRATIVE",
+      "title": "Trzy pytania od Adama",
+      "text": "Ola zgłosiła sprawę do IT. Adam z działu IT wyczyścił jej laptopa i radzi, żeby przed rozmową w komunikatorze zadać sobie trzy pytania:\n\n**1. Czy aplikacja jest sprawdzona?** Instaluj ją ze sklepu z aplikacjami albo zatwierdzoną przez IT – nigdy z linku w SMS-ie.\n\n**2. Czy wiem, z kim piszę?** Gdy coś budzi wątpliwości, zadzwoń na znany numer.\n\n**3. Czy sprawdzam pliki?** Nie otwieraj plików od nieznajomych – w razie wątpliwości zapytaj IT.",
+      "illustration": {
+        "image": "assets/lancuszek/images/trzy-pytania.d4934fed.webp",
+        "alt": "Adam z działu IT, w okularach i musztardowym kardiganie, wskazuje trzy ikony: zieloną tarczę z haczykiem, sylwetkę ze znakiem zapytania i dokument z lupą."
+      }
     },
     {
-      "id": "blik",
-      "type": "QUIZ",
-      "title": "Prośba o BLIK",
-      "prompt": "Kasia prosi na czacie o kod BLIK na pilny przelew – co robisz?",
-      "narration": {
-        "text": "Kasia prosi na czacie o kod BLIK na pilny przelew. Co robisz?",
-        "audioUrl": "audio/lancuszek/v1/blik/fc4b36aae7c8610d.mp3",
-        "durationMs": 3901,
-        "cues": [
-          {
-            "text": "Kasia prosi na czacie o kod BLIK na pilny przelew.",
-            "startMs": 0
-          },
-          {
-            "text": "Co robisz?",
-            "startMs": 3053
-          }
-        ]
-      },
-      "options": [
-        {
-          "text": "Wysyłam kod, przecież to Kasia.",
-          "correct": false,
-          "feedback": "Konto Kasi mogło zostać przejęte – kod trafiłby do oszusta."
-        },
-        {
-          "text": "Odpisuję na czacie: na pewno to Ty?",
-          "correct": false,
-          "feedback": "Na przejętym koncie odpowie oszust, nie Kasia."
-        },
-        {
-          "text": "Dzwonię do Kasi na numer, który znam.",
-          "correct": true,
-          "feedback": "Tak – znany numer to inny kanał, którego oszust nie kontroluje."
-        }
-      ],
-      "hint": "Sprawdź prośbę innym kanałem niż ten czat."
+      "id": "czas-na-quiz",
+      "type": "NARRATIVE",
+      "title": "Czas na quiz",
+      "text": "Sprawdź, czy rozpoznasz pułapki w komunikatorach i SMS-ach.",
+      "illustration": {
+        "image": "assets/lancuszek/images/quiz-start.da23c402.webp",
+        "alt": "Adam z działu IT z tabletem w ręce, obok duży fioletowy znak zapytania."
+      }
     },
     {
-      "id": "kod-sms",
+      "id": "prawda",
       "type": "QUIZ",
-      "title": "Kod z SMS-a",
-      "prompt": "Ktoś pisze, że wysłał Ci kod przez pomyłkę i prosi o niego – co robisz?",
-      "narration": {
-        "text": "Ktoś pisze, że wysłał ci kod przez pomyłkę, i prosi o niego. Co robisz?",
-        "audioUrl": "audio/lancuszek/v1/kod-sms/46c6808b63cb445f.mp3",
-        "durationMs": 5016,
-        "cues": [
-          {
-            "text": "Ktoś pisze, że wysłał ci kod przez pomyłkę, i prosi o niego.",
-            "startMs": 0
-          },
-          {
-            "text": "Co robisz?",
-            "startMs": 4040
-          }
-        ]
-      },
+      "title": "Prawda czy mit",
+      "prompt": "Które zdania o komunikatorach są prawdziwe?",
+      "multiple": true,
       "options": [
         {
-          "text": "Przesyłam kod, to tylko pomyłka.",
+          "text": "Znam tę osobę, więc jej profil na pewno jest prawdziwy.",
           "correct": false,
-          "feedback": "Kod z SMS-a potwierdza logowanie albo płatność – z nim ktoś przejmie Twoje konto."
+          "feedback": "Profil można podrobić albo przejąć – gdy coś budzi wątpliwości, sprawdź osobę innym kanałem."
         },
         {
-          "text": "Nie podaję kodu i nie odpisuję.",
+          "text": "Dostawca komunikatora może zbierać dane o mnie, np. do reklam.",
           "correct": true,
-          "feedback": "Tak – kodu z SMS-a nie podajesz nikomu, nawet znajomym."
+          "feedback": "Tak – wiele aplikacji zbiera dane o użytkownikach i ich kontaktach."
         },
         {
-          "text": "Pytam, do czego mu ten kod.",
+          "text": "To, co napiszę na czacie, na pewno zostanie między nami.",
           "correct": false,
-          "feedback": "Rozmowa daje oszustowi czas na wymówkę – kodu nie podajesz nikomu."
+          "feedback": "Wiadomość można przesłać dalej albo zrobić jej zrzut, a przejęte konto czyta oszust."
+        },
+        {
+          "text": "Prywatny komunikator nie niesie żadnego ryzyka.",
+          "correct": false,
+          "feedback": "Przez prywatny komunikator też przychodzą złośliwe pliki i fałszywe linki."
         }
       ],
-      "hint": "Kod z SMS-a jest tylko dla Ciebie."
+      "hint": "Pomyśl, co dzieje się z Twoimi danymi i kto naprawdę pisze.",
+      "illustration": {
+        "image": "assets/lancuszek/images/quiz-dane.d39bc467.webp",
+        "alt": "Telefon na biurku, nad nim dymki rozmowy; fioletowy lejek zbiera z nich ikony: pinezkę lokalizacji, kalendarz, dom i sylwetkę."
+      }
+    },
+    {
+      "id": "niebezpieczne",
+      "type": "QUIZ",
+      "title": "Dlaczego to ryzyko",
+      "prompt": "Dlaczego korzystanie z komunikatorów może być niebezpieczne?",
+      "multiple": true,
+      "options": [
+        {
+          "text": "Pliki z komunikatora mogą zawierać złośliwy program.",
+          "correct": true,
+          "feedback": "Tak – tak właśnie zainfekował się laptop Oli."
+        },
+        {
+          "text": "Komunikatory zbierają dużo danych, które ktoś może wykorzystać przeciwko Tobie.",
+          "correct": true,
+          "feedback": "Tak – prywatne informacje z czatu pomagają oszustom w kolejnych atakach."
+        },
+        {
+          "text": "Oszuści mogą przejąć profil i podszyć się pod znajomego.",
+          "correct": true,
+          "feedback": "Tak – przejęte konto znajomego to najskuteczniejsza przynęta."
+        },
+        {
+          "text": "Komunikator sam usuwa wirusy z każdego pliku.",
+          "correct": false,
+          "feedback": "Nie – komunikator przesyła plik dalej, nie sprawdza, czy jest bezpieczny."
+        }
+      ],
+      "hint": "Przypomnij sobie historię Oli i rozmowę z „Martą”.",
+      "illustration": {
+        "image": "assets/lancuszek/images/quiz-profil.0b156af5.webp",
+        "alt": "Dwa prawie identyczne profile na ekranach telefonów, oba z czerwonym trójkątem ostrzegawczym w rogu – jeden jest kopią."
+      }
+    },
+    {
+      "id": "film",
+      "type": "QUIZ",
+      "title": "Film od znajomego",
+      "prompt": "Znajomy przysyła film „To Ty na tym nagraniu?” – co robisz?",
+      "multiple": true,
+      "options": [
+        {
+          "text": "Szybko otwieram link, żeby sprawdzić, co to za film.",
+          "correct": false,
+          "feedback": "Tak zaczyna się łańcuszek – link prowadzi na fałszywą stronę logowania."
+        },
+        {
+          "text": "Uważnie sprawdzam profil nadawcy – czy to nie podróbka.",
+          "correct": true,
+          "feedback": "Tak – podrobiony profil często ma inny numer, nowe zdjęcie albo mało znajomych."
+        },
+        {
+          "text": "Pytam znajomego innym kanałem, np. dzwonię na znany numer.",
+          "correct": true,
+          "feedback": "Tak – inny kanał pokaże, czy konto znajomego nie zostało przejęte."
+        },
+        {
+          "text": "Wyłączam telefon, bo na pewno mam już wirusa.",
+          "correct": false,
+          "feedback": "Sama wiadomość nie zaraża telefonu – ważne, żeby nie klikać i sprawdzić nadawcę."
+        }
+      ],
+      "hint": "Sprawdź nadawcę i zapytaj go innym kanałem niż ten czat.",
+      "illustration": {
+        "image": "assets/lancuszek/images/quiz-film.fab29277.webp",
+        "alt": "Ola z ręką przy brodzie patrzy na telefon; obok dymek z miniaturą filmu i czerwony znak zapytania."
+      }
+    },
+    {
+      "id": "smishing",
+      "type": "QUIZ",
+      "title": "Smishing",
+      "prompt": "Czym jest smishing?",
+      "options": [
+        {
+          "text": "Sposobem na szybki restart telefonu.",
+          "correct": false,
+          "feedback": "Nie – smishing to oszustwo przez SMS-a."
+        },
+        {
+          "text": "Oszustwem przez SMS-a, np. z linkiem do fałszywej strony.",
+          "correct": true,
+          "feedback": "Tak – smishing to phishing przez SMS-a: podrobiony nadawca, pośpiech i link do fałszywej strony."
+        },
+        {
+          "text": "Nowym rodzajem szyfrowania SMS-ów.",
+          "correct": false,
+          "feedback": "Nie – smishing to oszustwo, nie zabezpieczenie."
+        }
+      ],
+      "hint": "To słowo łączy SMS i phishing.",
+      "illustration": {
+        "image": "assets/lancuszek/images/quiz-sms.bc902221.webp",
+        "alt": "Telefon na biurku z dymkiem SMS-a i fioletowym linkiem; z góry zwisa czerwony haczyk wędki."
+      }
     },
     {
       "id": "raport",
       "type": "SUMMARY",
       "title": "Raport",
-      "narration": {
-        "voice": "komisarz",
-        "text": "Łańcuszek przerwany. Ola nie zalogowała się na obcej stronie, nie wysłała kodu i zadzwoniła do Kasi. Kasia zmieniła hasło i odzyskała konto.",
-        "audioUrl": "audio/lancuszek/v1/raport/a5a2907d0b277ec0.mp3",
-        "durationMs": 10449,
-        "cues": [
-          {
-            "text": "Łańcuszek przerwany.",
-            "startMs": 0
-          },
-          {
-            "text": "Ola nie zalogowała się na obcej stronie, nie wysłała kodu i zadzwoniła do Kasi.",
-            "startMs": 1811
-          },
-          {
-            "text": "Kasia zmieniła hasło i odzyskała konto.",
-            "startMs": 7349
-          }
-        ]
-      },
-      "text": "Ola nie zalogowała się na obcej stronie, nie wysłała kodu i zadzwoniła do Kasi na znany numer. Kasia zmieniła hasło i odzyskała konto – łańcuszek się urwał.\n\n**Trzy zasady**\n\n1. Dziwna prośba od znajomego? Zadzwoń na znany numer.\n2. Kodu z SMS-a nie podajesz nikomu.\n3. Link w wiadomości? Nie klikaj – wejdź sam przez aplikację lub stronę.",
+      "text": "Ola od razu zgłosiła sprawę do IT. Adam wyczyścił laptopa, zanim dane firmy z niego wyciekły, a Ola ostrzegła znajomych, że „Marta” to oszust.\n\n**Trzy zasady**\n\n1. Plik albo aplikacja od nieznajomego? Nie otwieraj – zapytaj IT.\n2. Dziwna wiadomość od znajomego? Sprawdź ją innym kanałem.\n3. SMS z linkiem i pośpiechem? Nie klikaj i nie odpisuj.",
       "closing": {
-        "image": "assets/lancuszek/scenes/pl/zamkniecie-raport.1a95b831.svg",
+        "image": "assets/lancuszek/scenes/pl/zamkniecie-raport.487d2811.svg",
         "stamp": "assets/lancuszek/scenes/pl/zamkniecie-pieczec.eb11c289.svg",
         "note": "assets/lancuszek/scenes/pl/zamkniecie-liscik.b2287827.svg",
-        "alt": "Raport końcowy w teczce, sprawa LAN/2026/1013 „Łańcuszek”. Trzy zasady: 1. Dziwna prośba od znajomego? Zadzwoń na znany numer. 2. Kodu z SMS-a nie podajesz nikomu. 3. Link w wiadomości? Nie klikaj – wejdź sam przez aplikację lub stronę.",
+        "alt": "Raport końcowy w teczce, sprawa LAN/2026/1013 „Komunikatory”. Trzy zasady: 1. Plik albo aplikacja od nieznajomego? Nie otwieraj – zapytaj IT. 2. Dziwna wiadomość od znajomego? Sprawdź ją innym kanałem. 3. SMS z linkiem i pośpiechem? Nie klikaj i nie odpisuj.",
         "stampAlt": "Pieczęć: SPRAWA ZAMKNIĘTA.",
         "noteAlt": "Liścik komisarza: Łańcuszek przerwany. — A.W.",
         "slots": {
@@ -443,49 +475,49 @@
           }
         },
         "portrait": {
-          "image": "assets/lancuszek/scenes/pl/zamkniecie-raport-pion.f55085b4.svg",
+          "image": "assets/lancuszek/scenes/pl/zamkniecie-raport-pion.09d267f5.svg",
           "slots": {
             "evidence": {
               "x": 8,
-              "y": 20.5,
+              "y": 21,
               "w": 25.8,
-              "h": 3.8
+              "h": 3.3
             },
             "time": {
               "x": 35.8,
-              "y": 20.5,
+              "y": 21,
               "w": 25.8,
-              "h": 3.8
+              "h": 3.3
             },
             "xp": {
               "x": 63.6,
-              "y": 20.5,
+              "y": 21,
               "w": 25.8,
-              "h": 3.8
+              "h": 3.3
             },
             "lessons": {
               "x": 8,
-              "y": 29.6,
+              "y": 29.1,
               "w": 82.2,
-              "h": 26.3
+              "h": 30
             },
             "signature": {
-              "x": 44.7,
-              "y": 56.4,
-              "w": 45.6,
-              "h": 4
+              "x": 8,
+              "y": 62.3,
+              "w": 82.2,
+              "h": 2.8
             },
             "stamp": {
-              "x": 42,
-              "y": 80.8,
-              "w": 48.9,
-              "h": 17
+              "x": 14.7,
+              "y": 81.8,
+              "w": 68.9,
+              "h": 15
             },
             "note": {
               "x": 6.9,
-              "y": 62.3,
-              "w": 75.6,
-              "h": 18.6
+              "y": 67.1,
+              "w": 84.4,
+              "h": 13.9
             }
           }
         }

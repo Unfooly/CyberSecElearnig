@@ -214,11 +214,11 @@ Jedno miejsce dla wszystkich modułów: nazwa, rodzaj, moduł, status sprawdzeni
 | `skrzynka-zewn.example` | domena zewnętrznej skrzynki (przekierowanie poczty) | 2 `glos-z-helpdesku` | `.example` - zarezerwowana (RFC 2606), bezpieczna |
 | Karol Wieczorek, Paweł Nowicki, Grzegorz Sowa | postacie (fikcyjne) | 2 `glos-z-helpdesku` | fikcyjne; do sprawdzenia przez właściciela (bez odniesień do prawdziwych osób) |
 | numery 12 3XX XX 41, 12 3XX XX 00, wewn. 214, ID 7XX XXX 219, IP 185.XX.XX.17 | numery w fabule | 2 `glos-z-helpdesku` | zamaskowane (X) - nie są prawdziwymi numerami |
-| Ola Malec, Kasia, Marek | postacie (fikcyjne) | 3 `lancuszek` | fikcyjne; do sprawdzenia przez właściciela (bez odniesień do prawdziwych osób) |
-| SzybkaPaczka | kurier (fikcyjny, nazwa właściciela) | 3 `lancuszek` | fikcyjna; do sprawdzenia przez właściciela (wyszukiwarka, rejestr znaków towarowych) |
-| `wideo-kasi.test`, `szybkapaczka.test` | domeny w wiadomościach (link do „filmu”, dopłata) | 3 `lancuszek` | `.test` - zarezerwowane (RFC 2606), bezpieczne |
-| +48 500 XXX XXX | numer w wiadomości „nowy numer” | 3 `lancuszek` | zamaskowany (X) - nie jest prawdziwym numerem |
-| komunikator, ekran logowania | interfejsy w grafikach | 3 `lancuszek` | generyczne, bez logo i nazwy aplikacji/serwisu |
+| Ola Malec, „Marta” (fałszywy profil), Adam Kowal | postacie (fikcyjne) - wersja z D-203; Adam z modułu 4 | 3 `lancuszek` | fikcyjne; postacie zatwierdzone przez właściciela 2026-11-22 (bez odniesień do prawdziwych osób) |
+| KONTO-INFO, `konto.test` | nadawca i link w SMS-ie (smishing, D-203) | 3 `lancuszek` | nazwa rodzajowa; `.test` - zarezerwowana (RFC 2606), bezpieczna |
+| ul. Słoneczna 5, numer 7XXXX, LAN/2026/1013 | adres biura w czacie, numer specjalny w SMS-ie, sygnatura sprawy | 3 `lancuszek` | adres bez miasta (pospolita nazwa ulicy); numer zamaskowany (X); sygnatura wymyślona |
+| komunikator, SMS, plik Menu.docx | interfejsy i plik w grafikach | 3 `lancuszek` | generyczne, bez logo i nazwy aplikacji/serwisu |
+| Kasia, Marek, SzybkaPaczka, `wideo-kasi.test`, `szybkapaczka.test`, +48 500 XXX XXX | poprzednia wersja modułu 3 (do D-203) | 3 `lancuszek` | już nie w treści; zostają w osieroconych źródłach scen do sprzątnięcia (B-184) |
 | Bartek Lis | postać (fikcyjna) | 4 `na-skroty` | fikcyjna; **zatwierdzona przez właściciela 2026-10-23** (sprawdzone - bez kolizji z prawdziwymi osobami) |
 | CzatPomocnik, MojaChmura, PDF Zamiennik Free | darmowe narzędzia w fabule (czat AI, dysk w chmurze, program do PDF) | 4 `na-skroty` | fikcyjne; **zatwierdzone przez właściciela 2026-10-23** (sprawdzone - nie kolidują z prawdziwymi produktami); w grafikach bez logo, ikony z kompozytora |
 | „Darmowy VPN”, NSK/2026/1023 | opis rozszerzenia (nazwa rodzajowa), sygnatura sprawy | 4 `na-skroty` | rodzajowa / wymyślona - bezpieczne |

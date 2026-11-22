@@ -867,6 +867,15 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja właściciela - (1) tytuły z `course_versions.title` w języku gracza i plakietka na karcie kursu; (2) lekcja per język
   szablonu/kampanii; (3) czy i kiedy tłumaczyć interfejs (CLAUDE.md: bez pełnego frameworka i18n w MVP).
 
+### B-184 Moduł 3 według nagrania (D-203) - lektor i sprzątanie
+- Etykiety: `P2`, `mod:kursy`, `content` · Źródło: decyzja właściciela 2026-11-22 (D-203)
+- Opis: (1) **lektor** - 9 narracji (głos `komisarz`, teksty w `docs/modules/modul-3-komunikatory-nagranie.md`) po powrocie do płatnego
+  planu ElevenLabs, razem z B-183; (2) osierocone źródła poprzedniej wersji (`assets/scenes/pl/{odprawa,odprawa-pion,telefon-oli,telefon-oli-pion,logowanie-zoom}.svg`,
+  `scripts/content/scenes/examples/lancuszek/{odprawa*,telefon-oli*,logowanie-zoom}.json`, klocki `chatPhone`/`loginScreen` w `props-lancuszek.ts`,
+  testy scen, które ich używają) - usunąć (obiekty w R2 zostają dla starej wersji kursu); (3) liścik komisarza w raporcie („Łańcuszek
+  przerwany.”) pasuje do wątku łańcuszka, ale nie do historii Oli - rozważyć nowy przy nagrywaniu lektora.
+- Akceptacja: (1) nagrane i `--check` zielony; (2)-(3) zrobione albo świadomie odrzucone (wpis tutaj).
+
 ### B-183 Moduł 4 według nagrania (D-201) - lektor i sprzątanie
 - Etykiety: `P2`, `mod:kursy`, `content` · Źródło: decyzja właściciela 2026-11-22 i code review D-201
 - Opis: (1) **lektor na nowych ekranach** - 11 narracji (głos `komisarz`, teksty w `docs/modules/modul-4-na-skroty-nagranie.md`) po

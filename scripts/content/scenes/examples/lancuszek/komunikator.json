@@ -1,0 +1,60 @@
+{
+ "width": 1600,
+ "height": 1000,
+ "phone": "panorama",
+ "background": {
+  "flat": true,
+  "wall": "#D9C3A5"
+ },
+ "strings": {
+  "pl": {
+   "kontakt": "Marta",
+   "baner": "Nieznany numer",
+   "pytania": "Hej, tu Marta! Gdzie teraz pracujesz?",
+   "odpowiedz": "Na Słonecznej 5. W piątek mam wolne, wyjeżdżamy!",
+   "plik-nazwa": "Menu.docx",
+   "plik-opis": "48 KB"
+  }
+ },
+ "items": [
+  {
+   "id": "sloje",
+   "prop": "woodGrain",
+   "x": 0,
+   "y": 0,
+   "params": {
+    "w": 1600,
+    "h": 1000
+   }
+  },
+  {
+   "id": "kubek",
+   "prop": "mugTop",
+   "x": 250,
+   "y": 640,
+   "scale": 1.2
+  },
+  {
+   "id": "telefon",
+   "prop": "strangerChatPhone",
+   "x": 534,
+   "y": 6,
+   "scale": 0.76,
+   "partHotspots": {
+    "profil": "profil",
+    "pytania": "pytania",
+    "odpowiedz": "odpowiedz",
+    "plik": "plik"
+   }
+  },
+  {"id":"tekst-kontakt","prop":"textBox","x":702.7,"y":97.2,"phoneScreen":true,"evidence":"profil","params":{"w":304,"h":60.8,"text":{"$t":"kontakt"},"size":33.4,"valign":"middle","bold":true,"color":"#FFFFFF"}},
+  {"id":"tekst-baner","prop":"textBox","x":620.6,"y":200.6,"phoneScreen":true,"evidence":"profil","params":{"w":358.7,"h":41,"text":{"$t":"baner"},"size":26,"align":"middle","valign":"middle","color":"#6B5310"}},
+  {"id":"tekst-pytania","prop":"textBox","x":610,"y":284.2,"phoneScreen":true,"evidence":"pytania","params":{"w":364.8,"h":104.9,"text":{"$t":"pytania"},"size":28,"valign":"middle","color":"#2B2440"}},
+  {"id":"tekst-czas-1","prop":"textBox","x":876,"y":404.2,"phoneScreen":true,"params":{"w":121.6,"h":41,"text":"18:02","size":27.4,"align":"end","valign":"middle","color":"#8C8FA8"}},
+  {"id":"tekst-odpowiedz","prop":"textBox","x":625.2,"y":474.2,"phoneScreen":true,"evidence":"odpowiedz","params":{"w":364.8,"h":104.9,"text":{"$t":"odpowiedz"},"size":28,"valign":"middle","color":"#2B2440"}},
+  {"id":"tekst-czas-2","prop":"textBox","x":891.2,"y":594.2,"phoneScreen":true,"params":{"w":121.6,"h":41,"text":"18:05","size":27.4,"align":"end","valign":"middle","color":"#8C8FA8"}},
+  {"id":"tekst-plik-nazwa","prop":"textBox","x":721,"y":682.4,"phoneScreen":true,"evidence":"plik","params":{"w":266,"h":45.6,"text":{"$t":"plik-nazwa"},"size":33.4,"valign":"middle","bold":true,"color":"#2B2440"}},
+  {"id":"tekst-plik-opis","prop":"textBox","x":721,"y":734.1,"phoneScreen":true,"evidence":"plik","params":{"w":266,"h":39.5,"text":{"$t":"plik-opis"},"size":27.4,"valign":"middle","color":"#8C8FA8"}},
+  {"id":"tekst-czas-3","prop":"textBox","x":891.2,"y":804,"phoneScreen":true,"params":{"w":121.6,"h":41,"text":"18:06","size":27.4,"align":"end","valign":"middle","color":"#8C8FA8"}}
+ ]
+}

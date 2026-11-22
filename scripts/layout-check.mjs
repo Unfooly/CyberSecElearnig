@@ -2927,8 +2927,8 @@ try {
         if (errors.length > 0) fail(`${label}: (q6) błędy: ${errors.join(' | ')}`);
         step(`${label}: (q1-q6${testCase.illustration ? ', q7' : ''}) ${wide ? 'ekran na białym prostokącie monitora' : 'karta w ramce'}, bez przewijania strony, tekst ≥ 16 px, A/B/C i „Sprawdź” ≥ 44 px, ✕ i poprawne ✓, zdanie w ekranie, „Dalej” OK`, true);
       }
-      // (q8) Ilustracja obok tekstu (NARRATIVE, D-200): wczytana, ≥ 60 px, w oknie; tekst obok (komputer) albo pod nią (telefon), ≥ 16 px; bez
-      // przewijania strony.
+      // (q8) Ilustracja obok tekstu (NARRATIVE, D-200, układ D-205): wczytana, ≥ 60 px, w oknie; na komputerze tekst Z LEWEJ i ilustracja
+      // z prawej (co najmniej połowa szerokości obszaru treści), na telefonie tekst pod ilustracją; tekst ≥ 16 px; bez przewijania strony.
       {
         const label = `${viewport.name} / ilustracja / dev-ilustracja tabela`;
         errors.length = 0;
@@ -2940,22 +2940,27 @@ try {
           const r = img.getBoundingClientRect();
           const text = [...document.querySelectorAll('[data-testid="illustrated"] p')].find((p) => p.textContent.includes('Bartek'));
           const t = text.getBoundingClientRect();
+          const area = document.querySelector('[data-testid="player-content-area"]').getBoundingClientRect();
           return {
             natural: img.naturalWidth,
-            img: { top: r.top, bottom: r.bottom, left: r.left, right: r.right, height: r.height },
-            text: { top: t.top, left: t.left },
+            // Szerokość NARYSOWANEJ grafiki (object-contain: ramka bywa szersza niż obraz).
+            img: { top: r.top, bottom: r.bottom, left: r.left, right: r.right, height: r.height, width: Math.min(r.width, (r.height * img.naturalWidth) / Math.max(1, img.naturalHeight)) },
+            text: { top: t.top, left: t.left, right: t.right },
+            areaWidth: area.width,
             font: parseFloat(getComputedStyle(text).fontSize),
             pageScroll: [document.documentElement.scrollWidth - innerWidth, document.documentElement.scrollHeight - innerHeight],
           };
         });
         const side = viewport.width >= 640;
         if (n.natural === 0 || n.img.height < 60 || n.img.top < 0 || n.img.bottom > viewport.height) fail(`${label}: (q8) ilustracja niewidoczna - ${JSON.stringify(n.img)}.`);
-        if (side ? n.text.left < n.img.right - 1 : n.text.top < n.img.bottom - 1) fail(`${label}: (q8) tekst nie ${side ? 'obok' : 'pod'} ilustracją - ${JSON.stringify(n)}.`);
+        if (side ? n.text.right > n.img.left + 1 : n.text.top < n.img.bottom - 1) fail(`${label}: (q8) tekst nie ${side ? 'z lewej obok' : 'pod'} ilustracji - ${JSON.stringify(n)}.`);
+        // D-205: duża ilustracja na komputerze (uwaga właściciela - „za dużo wolnego miejsca”); niski ekran ogranicza ją wysokością (2/3 okna).
+        if (side && n.img.width < n.areaWidth * 0.4) fail(`${label}: (q8) ilustracja za mała (${Math.round(n.img.width)} px przy obszarze ${Math.round(n.areaWidth)} px).`);
         if (n.font < 15.9) fail(`${label}: (q8) tekst ${n.font}px < 16px.`);
         if (n.pageScroll.some((v) => v > 1)) fail(`${label}: (q8) przewija się strona (${n.pageScroll}).`);
         if (errors.length > 0) fail(`${label}: (q8) błędy: ${errors.join(' | ')}`);
         await shot(page, `${viewport.name}-ilustracja-tabela`);
-        step(`${label}: (q8) ilustracja ${side ? 'z lewej, tekst obok' : 'nad tekstem'}, tekst ≥ 16 px, bez przewijania strony`, true);
+        step(`${label}: (q8) ilustracja ${side ? 'z prawej (duża), tekst z lewej' : 'nad tekstem'}, tekst ≥ 16 px, bez przewijania strony`, true);
       }
       await context.close();
     }

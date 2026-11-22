@@ -119,7 +119,8 @@ function renderBlock(block: ContentBlock, ctx: RenderContext) {
   const wraps = block.type === 'NARRATIVE' || (block.type === 'QUIZ' && !ctx.simpleMode);
   if (!block.illustration || !wraps) return content;
   return (
-    <Illustrated illustration={block.illustration} contentBase={ctx.contentBase}>
+    // Żywy NARRATIVE - układ 'feature' (D-205: tekst z lewej, duża ilustracja z prawej); QUIZ poza trybem prostym - układ D-200.
+    <Illustrated illustration={block.illustration} contentBase={ctx.contentBase} feature={block.type === 'NARRATIVE'}>
       {content}
     </Illustrated>
   );
@@ -856,7 +857,7 @@ export default function CoursePlayer({
   // Wynik pytania na fałszywej stronie (D-190): zostaje na tej samej stronie.
   const pageQuizFeedback = showingFeedback && isPageQuiz(answeredBlock);
   const monitorFeedback = (answeredBlock?.type === 'EMAIL_ANALYSIS' && answeredBlock.frame === 'monitor' && !!feedback?.detail) || pageQuizFeedback;
-  const contentLayout: 'scene' | 'slide' | 'fill' =
+  const contentLayout: 'scene' | 'slide' | 'fill' | 'feature' =
     isSummaryMode && closingBlock
       ? 'fill'
       : monitorFeedback
@@ -898,7 +899,11 @@ export default function CoursePlayer({
               // Rozmowa na żywo (D-123): ekran połączenia z własnym przewijaniem transkrypcji i odpowiedziami w stopce.
               currentBlock?.type === 'LIVE_CALL'
             ? 'fill'
-            : 'slide';
+            : // Ekran z ilustracją (D-205, uwaga właściciela do modułu 4: „za dużo wolnego miejsca”): slajd na całą wysokość i szerokość
+              // obszaru, wyśrodkowany w pionie - jak w nagraniach; przewija się jak slajd, gdy się nie mieści. Podgląd „Wstecz” - zwykły slajd.
+              !reviewing && !showingFeedback && currentBlock?.type === 'NARRATIVE' && !!currentBlock.illustration
+              ? 'feature'
+              : 'slide';
   const onProgress = (blockId: string, patch: Partial<ClientProgressBlock>) =>
     setResults((current) => ({ ...current, [blockId]: { ...(current[blockId] ?? { type: patch.type ?? '', done: false }), ...patch } as ClientProgressBlock }));
 
@@ -1248,7 +1253,10 @@ export default function CoursePlayer({
             forwardHref={isSummaryMode ? '/courses' : undefined}
             onExitClick={handleExitClick}
             exitPending={exitPending}
-            backdropUrl={contentAssetUrl(contentBase, initial.moduleInfo?.cover?.backdrop ?? undefined, 'image')}
+            // Każdy uruchomiony moduł ma tło (D-205, decyzja właściciela): własne `cover.backdrop` (D-178) albo okładka startu - rozmyta
+            // i przyciemniona, żeby nie konkurowała z treścią w ramce.
+            backdropUrl={contentAssetUrl(contentBase, initial.moduleInfo?.cover?.backdrop ?? initial.moduleInfo?.cover?.start ?? undefined, 'image')}
+            backdropSoft={!initial.moduleInfo?.cover?.backdrop}
             // Scena z drzwiami (D-106): wyjściem jest podejście do drzwi - podpowiedź mówi to wprost (samo „Ukończ blok” myliło, gdy
             // wymagane przedmioty były już obejrzane).
             forwardHint={

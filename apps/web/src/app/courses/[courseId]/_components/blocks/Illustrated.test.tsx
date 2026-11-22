@@ -35,6 +35,23 @@ describe('Illustrated (D-200)', () => {
     expect(screen.getByText('Treść')).toBeInTheDocument();
   });
 
+  it('D-205: wariant „feature” (żywy NARRATIVE) - ilustracja po prawej na komputerze; domyślnie (podgląd, QUIZ) - układ D-200', () => {
+    const { rerender } = render(
+      <Illustrated illustration={illustration} contentBase={BASE} feature>
+        <p>Treść</p>
+      </Illustrated>,
+    );
+    expect(screen.getByTestId('illustrated')).toHaveAttribute('data-variant', 'feature');
+    expect(screen.getByRole('img').closest('figure')!.className).toContain('sm:order-2');
+    rerender(
+      <Illustrated illustration={illustration} contentBase={BASE}>
+        <p>Treść</p>
+      </Illustrated>,
+    );
+    expect(screen.getByTestId('illustrated')).toHaveAttribute('data-variant', 'slide');
+    expect(screen.getByRole('img').closest('figure')!.className).not.toContain('sm:order-2');
+  });
+
   it('niebezpieczna ścieżka obrazu (adres z zewnątrz) - bez grafiki, sama treść', () => {
     render(
       <Illustrated illustration={{ image: 'https://evil.example/x.png', alt: 'x' }} contentBase={BASE}>

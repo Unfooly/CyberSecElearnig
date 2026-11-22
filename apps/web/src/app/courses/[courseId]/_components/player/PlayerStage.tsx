@@ -63,8 +63,9 @@ export interface PlayerStageProps {
   stage: ReactNode;
   /** 'scene' (SCENE_HOTSPOTS - wypełnia całą dostępną przestrzeń), 'fill' (DIALOGUE, BRIEFING i DOSSIER - to samo CSS co 'scene',
       osobna nazwa: czat/odprawa nie są "sceną", fix/dialogue-sticky-questions, D-081) albo 'slide' (domyślny - wyśrodkowany
-      panel max-w-3xl). */
-  contentLayout?: 'scene' | 'slide' | 'fill';
+      panel max-w-3xl) albo 'feature' (D-205: ekran z ilustracją - jak slajd, ale szeroki i wyśrodkowany w pionie na całą wysokość
+      obszaru, bez pustego dołu; przewija się, gdy się nie mieści). */
+  contentLayout?: 'scene' | 'slide' | 'fill' | 'feature';
   /** Tekst podpowiedzi (D-093, zamiast maskotki): neutralny dymek - na scenie w rogu, w układzie 'slide' nad treścią. */
   hint?: string;
   /** <NarrationBar .../> (CoursePlayer woła useNarrationBar i przekazuje mu wynik - jedno źródło stanu). */
@@ -111,6 +112,8 @@ export interface PlayerStageProps {
   /** Tło modułu za ramką (D-178, `cover.backdrop`): gotowy adres grafiki; widoczne wokół ramki na komputerze (telefon - ramka na cały ekran,
       bez tła); bez - tło strony jak dotąd. */
   backdropUrl?: string | null;
+  /** Tło zastępcze z okładki startu (D-205): rozmyte i przyciemnione (okładka jest ilustracją z postaciami, nie tłem). */
+  backdropSoft?: boolean;
 }
 
 function PlayerStageInner({
@@ -139,6 +142,7 @@ function PlayerStageInner({
   onExitClick,
   exitPending = false,
   backdropUrl = null,
+  backdropSoft = false,
 }: PlayerStageProps) {
   const percent = totalBlocks > 0 ? Math.round((completedBlocks / totalBlocks) * 100) : 0;
   const hintId = 'forward-hint';
@@ -258,7 +262,7 @@ function PlayerStageInner({
 
   return (
     // relative isolate tylko z tłem (D-178) - bez tła ramka bez nowego kontekstu nakładania, jak dotąd.
-    <div className={`player-outer flex h-full w-full items-center justify-center p-4${backdropUrl ? ' relative isolate' : ''}`}>
+    <div className={`player-outer flex h-full w-full items-center justify-center p-4${backdropUrl ? ` relative isolate${backdropSoft ? ' overflow-clip' : ''}` : ''}`}>
       {/* Tło modułu (D-178): dekoracyjne, za ramką - widać je wokół niej na komputerze. Telefon (< 768 px): ramka na cały ekran, więc
           tła nie ładujemy wcale (media w <source> bez obrazka: przeglądarka nie pobiera pliku). */}
       {backdropUrl && (
@@ -271,10 +275,15 @@ function PlayerStageInner({
             aria-hidden="true"
             data-testid="player-backdrop"
             referrerPolicy="no-referrer"
-            className="pointer-events-none absolute inset-0 -z-10 hidden h-full w-full object-cover md:block"
+            data-soft={backdropSoft || undefined}
+            className={`pointer-events-none absolute inset-0 -z-10 hidden h-full w-full object-cover md:block${
+              backdropSoft ? ' scale-110 blur-xl brightness-[0.45]' : ''
+            }`}
           />
         </picture>
       )}
+      {/* Tło zastępcze (D-205): ciemny spód pod rozmytymi krawędziami okładki (rozmycie przycina `overflow-clip` warstwy zewnętrznej). */}
+      {backdropUrl && backdropSoft && <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-20 hidden bg-ink md:block" />}
       {/* .mobile-readable (globals.css, D-103): na telefonie cały tekst modułu min. 15 px - treść bloku, notatnik, paski; desktop bez zmian. */}
       {/* Ramka nigdy się nie przewija (overflow: clip w globals.css .player-frame). onScroll to rezerwa dla przeglądarek bez `clip`:
           przewinięcie ramki (np. fokus albo scrollIntoView elementu wystającego poza ramkę) cofamy od razu. */}
@@ -388,7 +397,9 @@ function PlayerStageInner({
               className={
                 contentLayout === 'scene' || contentLayout === 'fill'
                   ? 'flex h-full min-h-full flex-col items-center justify-center p-3'
-                  : 'mx-auto w-full max-w-3xl p-4 sm:p-6'
+                  : contentLayout === 'feature'
+                    ? 'mx-auto flex min-h-full w-full max-w-6xl flex-col justify-center p-4 sm:p-8'
+                    : 'mx-auto w-full max-w-3xl p-4 sm:p-6'
               }
             >
               {hint && contentLayout !== 'scene' && contentLayout !== 'fill' && <Hint variant="bar" text={hint} />}

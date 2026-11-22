@@ -248,4 +248,54 @@ describe('CoursePlayer: okna w stylu Unfooly (D-178)', () => {
     render(<CoursePlayer courseId="course-1" initial={course([narrative], { currentBlockIndex: 1 })} narrationEnabled={false} />);
     expect(screen.queryByTestId('player-backdrop')).toBeNull();
   });
+
+  it('D-205: moduł bez własnego tła - tło z okładki startu, rozmyte (data-soft); ekran z ilustracją w układzie „feature”', () => {
+    stubFetch();
+    const narrative: ContentBlock = {
+      type: 'NARRATIVE',
+      id: 'wstep',
+      title: 'Wstęp',
+      text: 'Wstęp.',
+      illustration: { image: 'assets/m/images/wstep.1.webp', alt: 'Ilustracja wstępu' },
+    };
+    const moduleInfo = {
+      category: 'PHISHING_SOCIAL_ENGINEERING',
+      durationMinutes: 10,
+      subtitle: null,
+      caseNumber: 1,
+      notice: null,
+      cover: { start: 'assets/m/images/start.1.webp', end: 'b.webp', startPortrait: null, endPortrait: null },
+    };
+    render(
+      <CoursePlayer courseId="course-1" initial={course([narrative, { type: 'SUMMARY', id: 'raport', text: 'Koniec.' }], { moduleInfo })} narrationEnabled={false} contentBase="https://content.example.test" showStartScreen={false} />,
+    );
+    const backdrop = screen.getByTestId('player-backdrop');
+    expect(backdrop).toHaveAttribute('src', 'https://content.example.test/assets/m/images/start.1.webp');
+    expect(backdrop).toHaveAttribute('data-soft', 'true');
+    expect(screen.getByTestId('illustration')).toHaveAttribute('alt', 'Ilustracja wstępu');
+    const inner = screen.getByTestId('player-content-area').querySelector(':scope > div') as HTMLElement;
+    expect(inner.className).toMatch(/max-w-6xl/);
+    expect(screen.getByTestId('illustrated')).toHaveAttribute('data-variant', 'feature');
+  });
+
+  it('D-205: NARRATIVE bez ilustracji - zwykły slajd; własne tło modułu (D-178) - bez rozmycia; bez okładki i tła - bez tła', () => {
+    stubFetch();
+    const plain: ContentBlock = { type: 'NARRATIVE', id: 'wstep', title: 'Wstęp', text: 'Wstęp.' };
+    const summary: ContentBlock = { type: 'SUMMARY', id: 'raport', text: 'Koniec.' };
+    const info = (cover: Record<string, unknown> | null) => ({ category: 'PHISHING_SOCIAL_ENGINEERING', durationMinutes: 10, subtitle: null, caseNumber: 1, notice: null, cover });
+    const own = render(
+      <CoursePlayer
+        courseId="course-1"
+        initial={course([plain, summary], { moduleInfo: info({ start: 's.webp', end: 'e.webp', startPortrait: null, endPortrait: null, backdrop: 'assets/m/tlo.1.webp' }) as never })}
+        narrationEnabled={false}
+        contentBase="https://content.example.test"
+        showStartScreen={false}
+      />,
+    );
+    expect((screen.getByTestId('player-content-area').querySelector(':scope > div') as HTMLElement).className).toMatch(/max-w-3xl/);
+    expect(screen.getByTestId('player-backdrop')).not.toHaveAttribute('data-soft');
+    own.unmount();
+    render(<CoursePlayer courseId="course-1" initial={course([plain, summary], { moduleInfo: info(null) as never })} narrationEnabled={false} showStartScreen={false} />);
+    expect(screen.queryByTestId('player-backdrop')).toBeNull();
+  });
 });

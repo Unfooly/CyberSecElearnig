@@ -30,11 +30,23 @@ export default function NarrativeBlock({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [review]);
 
+  // Ekran z ilustracją (D-205, jak w nagraniach): duży tytuł w kolorze marki i większy tekst obok dużej ilustracji.
+  const featured = Boolean(block.illustration) && !review;
   return (
     <div>
-      {block.title && <p className="mb-3 text-lg font-medium text-slate-900">{block.title}</p>}
+      {block.title && (
+        <p
+          className={
+            featured
+              ? 'mb-4 text-2xl font-extrabold leading-tight tracking-[-0.01em] text-accent-ink sm:text-[2rem]'
+              : 'mb-3 text-lg font-medium text-slate-900'
+          }
+        >
+          {block.title}
+        </p>
+      )}
       {block.text && (
-        <div className="space-y-2 text-slate-800">
+        <div className={featured ? 'space-y-3 text-base leading-relaxed text-slate-800 sm:text-lg' : 'space-y-2 text-slate-800'}>
           <SimpleMarkdown text={block.text} />
         </div>
       )}

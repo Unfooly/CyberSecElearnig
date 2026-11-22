@@ -41,6 +41,8 @@ describe('Odznaka za easter egg przy odkryciu (e2e)', () => {
       .post(`/courses/${courseId}/blocks/pulpit/explore`)
       .set('Authorization', `Bearer ${token}`)
       .set('CF-Connecting-IP', nextIp())
+      // Język gracza z nagłówka (wersja testowa nie ma `locales`) - nazwa i grafika odznaki po polsku.
+      .set('Accept-Language', 'pl')
       .send({ visited, noted: [] });
   const badgeCount = (organizationId: string, userId: string) =>
     tenantPrisma.runInOrgContext(organizationId, (tx) => tx.userBadge.count({ where: { organizationId, userId, badge: { code: 'curious-detective' } } }));

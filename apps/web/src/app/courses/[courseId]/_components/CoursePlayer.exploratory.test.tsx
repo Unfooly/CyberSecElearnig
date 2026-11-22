@@ -248,7 +248,8 @@ describe('CoursePlayer: śledztwo (dowody, podpowiedzi)', () => {
         for (let el = node; el; el = el.parentElement) if ((el as unknown as { inert?: boolean }).inert) return true;
         return false;
       };
-      expect(inertAncestor(screen.getByTestId('player-bottombar'))).toBe(true);
+      // `inert` ustawia efekt PlayerStage po rejestracji warstwy - po pojawieniu się okienka, stąd waitFor (CI wolniejsze niż lokalnie).
+      await waitFor(() => expect(inertAncestor(screen.getByTestId('player-bottombar'))).toBe(true));
       // Esc zamyka okienko, a nie zbliżenie przedmiotu pod nim (kaskada LIFO).
       fireEvent.keyDown(document, { key: 'Escape' });
       expect(screen.queryByRole('dialog', { name: 'Nowe osiągnięcie!' })).not.toBeInTheDocument();

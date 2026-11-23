@@ -17,8 +17,12 @@ const BAR = 80;
 /** Środek gniazda USB laptopa od górnej krawędzi podstawy (`laptopFront`) i środek wtyku pendrive'a (`usbStick`, lokalne y). */
 const PORT_Y = 37;
 const PLUG_Y = 40;
-const CORK = '#C89B6D';
-const CORK_EDGE = '#9C7247';
+/** Tablica skutków ze zdjęciami (`photoBoard`): kolory jak ciemne wnętrza grafik Dreaminy modułu. */
+const BOARD_BG = '#16161B';
+const BOARD_CARD = '#24242C';
+const BOARD_PHOTO = '#33333D';
+/** Promień rogów okna zdjęcia - ten sam w masce zdjęcia (photo-fill.ts). */
+export const PHOTO_RX = 12;
 
 /** Cień kształtu; `at` - przesunięcie całego cienia (transform), gdy kształt nie leży w (0,0). */
 const shadow = (w: number, h: number, rx: number, dx = 10, dy = 14, at?: [number, number]) =>
@@ -179,75 +183,43 @@ export const usbStick: PropFn<{ len?: number; flip?: boolean; target?: Rect }> =
   };
 };
 
-/** Ikony kart skutków (bez słów): serwery obcej firmy, robak w paczce, waga (prawo), folder z krzyżykiem (utrata plików). */
-const cardIcon = (kind: number, cx: number, cy: number, s: number) => {
-  const g = (inner: string) => `<g transform="translate(${cx} ${cy}) scale(${s})">${inner}</g>`;
-  switch (kind) {
-    case 0:
-      return g(
-        [-60, -10, 40].map((y) => `<rect x="-70" y="${y}" width="140" height="40" rx="8" fill="${P.purpleDark}"/><circle cx="-46" cy="${y + 20}" r="7" fill="${P.green}"/><rect x="-20" y="${y + 15}" width="70" height="10" rx="5" fill="${P.grey}"/>`).join('') +
-          `<path d="M80 -70 a26 26 0 0 1 0 52" fill="none" stroke="${P.red}" stroke-width="10" stroke-linecap="round"/>`,
-      );
-    case 1:
-      return g(
-        `<path d="M-70 -20 l70 -36 l70 36 v76 l-70 36 l-70 -36 z" fill="${P.desk}" stroke="${P.deskDark}" stroke-width="6"/><path d="M-70 -20 l70 36 l70 -36 M0 16 v76" fill="none" stroke="${P.deskDark}" stroke-width="6"/>` +
-          `<ellipse cx="20" cy="-50" rx="26" ry="20" fill="${P.green}"/><circle cx="20" cy="-78" r="14" fill="${P.green}"/>` +
-          `<path d="M-10 -60 l-18 -8 M-10 -44 l-18 6 M50 -60 l18 -8 M50 -44 l18 6 M12 -90 l-8 -14 M28 -90 l8 -14" stroke="${P.green}" stroke-width="6" stroke-linecap="round"/>`,
-      );
-    case 2:
-      return g(
-        `<rect x="-6" y="-80" width="12" height="150" rx="4" fill="${P.purpleDark}"/><rect x="-50" y="66" width="100" height="16" rx="8" fill="${P.purpleDark}"/>` +
-          `<rect x="-80" y="-66" width="160" height="10" rx="5" fill="${P.purpleDark}"/>` +
-          `<path d="M-70 -56 l-26 60 h52 z M70 -56 l-26 60 h52 z" fill="${P.yellow}" stroke="${P.yellowDark}" stroke-width="4"/>`,
-      );
-    default:
-      return g(
-        `<path d="M-80 -50 h56 l14 16 h90 v100 h-160 z" fill="${P.yellowDark}"/><rect x="-80" y="-30" width="160" height="96" rx="8" fill="${P.yellow}"/>` +
-          `<path d="M-26 -4 l52 52 M26 -4 l-52 52" stroke="${P.red}" stroke-width="14" stroke-linecap="round"/>`,
-      );
-  }
-};
-
 /**
- * Tablica korkowa z czterema kartami skutków (`cols` × wierszy, karty po kolei 1-4). Części: `karta-1`…`karta-4` (cele dotykowe -
- * cała karta) i `slot-tytul-1`…`slot-tytul-4` (tytuł karty pod ikoną). `iconH` - wysokość pola ikony na karcie.
+ * Tablica czterech kart skutków ze zdjęciami (D-208, uwaga właściciela 2026-11-23: grafiki z Dreaminy jak w reszcie modułu, zamiast
+ * rysowanej tablicy korkowej). Ciemne tło jak grafiki Dreaminy; karty `cols` × wierszy, po kolei 1-4. Części: `karta-1`…`karta-4` (cele
+ * dotykowe - cała karta), `foto-1`…`foto-4` (kwadratowe okno zdjęcia: `photo: 'left'` przy lewej krawędzi, `'top'` u góry) i
+ * `slot-tytul-1`…`slot-tytul-4`. SVG sceny nie osadza obrazów (bez `href`, test w odprawa.test.ts) - zdjęcia wkleja w okna `foto-*`
+ * dopiero `photo-fill.ts`, który zapisuje gotową scenę jako WebP.
  */
-export const effectsBoard: PropFn<{ w?: number; h?: number; cols?: number; gap?: number; iconH?: number }> = ({ w = 1520, h = 920, cols = 4, gap = 36, iconH = 300 }) => {
-  const frame = 26, pad = 40;
+export const photoBoard: PropFn<{ w?: number; h?: number; cols?: number; gap?: number; photo?: 'left' | 'top' }> = ({ w = 1520, h = 920, cols = 2, gap = 36, photo = 'left' }) => {
+  const pad = 40, inset = 20;
   const rows = Math.ceil(4 / cols);
-  const cw = (w - 2 * frame - 2 * pad - (cols - 1) * gap) / cols;
-  const ch = (h - 2 * frame - 2 * pad - (rows - 1) * gap) / rows;
-  const colors = [P.purple, P.green, P.orange, P.red];
+  const cw = (w - 2 * pad - (cols - 1) * gap) / cols;
+  const ch = (h - 2 * pad - (rows - 1) * gap) / rows;
   const parts: Record<string, Rect> = {};
   let cards = '';
   for (let i = 0; i < 4; i += 1) {
     const c = i % cols, r = Math.floor(i / cols);
-    const x = frame + pad + c * (cw + gap), y = frame + pad + r * (ch + gap);
-    // Karty proste (bez obrotu): tytuł wpala scena prostym `textBox` - na obróconej karcie odstawałby od krawędzi.
-    const icon = Math.min(iconH, ch * 0.45);
+    const x = pad + c * (cw + gap), y = pad + r * (ch + gap);
+    // Okno zdjęcia: kwadrat przy lewej albo górnej krawędzi karty; tytuł w pozostałym miejscu.
+    const side = photo === 'left' ? ch - 2 * inset : cw - 2 * inset;
+    const foto: Rect = { x: x + inset, y: y + inset, w: side, h: side };
+    const title: Rect =
+      photo === 'left'
+        ? { x: foto.x + side + 28, y: y + inset, w: cw - side - 2 * inset - 28, h: ch - 2 * inset }
+        : { x: x + inset, y: foto.y + side + 20, w: cw - 2 * inset, h: ch - side - 2 * inset - 20 };
+    if (title.w < 160 || title.h < 120) throw new Error(`photoBoard: za mało miejsca na tytuł karty (${Math.round(title.w)}×${Math.round(title.h)} j.)`);
     cards +=
-      `<g>` +
-      shadow(cw, ch, 10, 8, 10, [x, y]) +
-      `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${cw.toFixed(1)}" height="${ch.toFixed(1)}" rx="10" fill="${P.white}"/>` +
-      `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${cw.toFixed(1)}" height="18" rx="6" fill="${colors[i]}"/>` +
-      `<circle cx="${(x + cw / 2).toFixed(1)}" cy="${(y + 4).toFixed(1)}" r="14" fill="${P.red}"/><circle cx="${(x + cw / 2 - 4).toFixed(1)}" cy="${y.toFixed(1)}" r="5" fill="${P.white}" opacity="0.7"/>` +
-      cardIcon(i, x + cw / 2, y + 40 + icon / 2, icon / 220) +
-      `</g>`;
+      `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${cw.toFixed(1)}" height="${ch.toFixed(1)}" rx="18" fill="${BOARD_CARD}" stroke="${P.purple}" stroke-opacity="0.55" stroke-width="3"/>` +
+      `<rect x="${foto.x.toFixed(1)}" y="${foto.y.toFixed(1)}" width="${side.toFixed(1)}" height="${side.toFixed(1)}" rx="${PHOTO_RX}" fill="${BOARD_PHOTO}"/>`;
     parts[`karta-${i + 1}`] = { x, y, w: cw, h: ch };
-    const titleH = ch - 60 - icon - 30;
-    if (titleH < 60) throw new Error(`effectsBoard: za niska karta na tytuł (${Math.round(titleH)} j.) - zwiększ "h" albo zmniejsz "iconH"`);
-    parts[`slot-tytul-${i + 1}`] = { x: x + 24, y: y + 60 + icon, w: cw - 48, h: titleH };
+    parts[`foto-${i + 1}`] = foto;
+    parts[`slot-tytul-${i + 1}`] = title;
   }
   return {
     w, h,
-    svg:
-      shadow(w, h, 18, 12, 16) +
-      `<rect width="${w}" height="${h}" rx="18" fill="${CORK_EDGE}"/>` +
-      `<rect x="${frame}" y="${frame}" width="${w - 2 * frame}" height="${h - 2 * frame}" rx="8" fill="${CORK}"/>` +
-      Array.from({ length: 40 }, (_, k) => `<circle cx="${(frame + ((k * 137) % (w - 2 * frame))).toFixed(0)}" cy="${(frame + ((k * 89) % (h - 2 * frame))).toFixed(0)}" r="${3 + (k % 3)}" fill="${CORK_EDGE}" opacity="0.35"/>`).join('') +
-      cards,
+    svg: `<rect width="${w}" height="${h}" rx="24" fill="${BOARD_BG}"/>` + cards,
     parts: Object.fromEntries(Object.entries(parts).map(([k, r]) => [k, { x: +r.x.toFixed(1), y: +r.y.toFixed(1), w: +r.w.toFixed(1), h: +r.h.toFixed(1) }])),
   };
 };
 
-export const NASKROTY_PROPS = { laptopFront, chatWindow, cloudWindow, appIcon, usbStick, effectsBoard };
+export const NASKROTY_PROPS = { laptopFront, chatWindow, cloudWindow, appIcon, usbStick, photoBoard };

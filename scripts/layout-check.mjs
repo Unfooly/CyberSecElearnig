@@ -387,6 +387,8 @@ function expectedEvidenceKeys(slug) {
   const moduleText = readFileSync(join(dir, 'module.json'), 'utf8');
   const keys = new Set();
   for (const entry of Object.values(JSON.parse(readFileSync(lockPath, 'utf8')).entries ?? {})) {
+    // Tylko SVG z kompozytora niosą `data-evidence`. Scena ze zdjęciami (D-208, WebP z photo-fill.ts - moduł 4 `skutki`) nie jest mierzona
+    // w m9: tekst pilnuje kompozytor na SVG tej samej sceny (`minTextPx: 16`, te same proporcje), luka opisana w B-186.
     if (!entry.original?.endsWith('.svg') || !moduleText.includes(entry.key)) continue;
     const file = join(dir, 'assets', entry.original);
     if (!existsSync(file)) continue;

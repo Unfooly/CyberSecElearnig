@@ -68,8 +68,8 @@ specyfikacja nie podawała (narracje, karty przedmiotów, informacja zwrotna, od
 | karta | treść | notatka |
 |---|---|---|
 | Dane firmy u obcej firmy | To, co wkleisz do darmowego narzędzia, trafia na cudze serwery; nie wiesz, kto ma do tego dostęp i czy narzędzie się na tym nie uczy. | Skutek: dane z darmowego narzędzia trafiają na cudze serwery. |
-| Wirus w pakiecie | Darmowe programy i rozszerzenia z internetu często mają ukryte złośliwe dodatki. | Skutek: darmowy program może mieć złośliwy dodatek. |
-| Problem prawny firmy | Jeśli to dane osobowe, firma może musieć zgłosić naruszenie do UODO w ciągu 72 godzin i ryzykuje karę. | Skutek: naruszenie danych osobowych - zgłoszenie do UODO w 72 godziny. |
+| Wirusy w pakiecie | Darmowe programy i rozszerzenia z internetu często mają ukryte złośliwe dodatki. | Skutek: darmowy program może mieć złośliwy dodatek. |
+| Problemy prawne | Jeśli to dane osobowe, firma może musieć zgłosić naruszenie do UODO w ciągu 72 godzin i ryzykuje karę. | Skutek: naruszenie danych osobowych - zgłoszenie do UODO w 72 godziny. |
 | Utrata plików | Prywatne konto nie ma firmowej kopii zapasowej; gdy konto zniknie albo pracownik odejdzie, pliki przepadają. | Skutek: pliki na prywatnym koncie mogą przepaść. |
 
 ### 3.4 Bezpieczne czy zapytaj IT? (SWIPE_SORT, `bezpieczne-czy-it`) - z rozszerzeniem schematu (pkt 7.1)
@@ -127,7 +127,8 @@ specyfikacja nie podawała (narracje, karty przedmiotów, informacja zwrotna, od
 Wszystkie ze `strings` (`pl`), tekst ≥ 16 px na 390 px (`minTextPx: 16`), tekst potrzebny do zadania z kluczem `evidence`, każda
 scena zielona w `xx` (pseudo-lokalizacja). Arkusze i zrzuty (pl-PL) do `docs/brand/screens/m4/` - przegląd właściciela przed merge.
 
-> Stan 2026-11-23: `odprawa` i `biurko-bartka` zastąpione grafikami według nagrania (D-201), źródła usunięte w B-183.
+> Stan 2026-11-23: `odprawa` i `biurko-bartka` zastąpione grafikami według nagrania (D-201), źródła usunięte w B-183; `tablica-skutki`
+> to od D-208 cztery karty z ilustracjami Dreaminy (WebP, `photoBoard` + `photo-fill.ts`), tytuły „Wirusy w pakiecie” i „Problemy prawne”.
 
 | grafika | wariant pionowy | tekst wpalony |
 |---|---|---|

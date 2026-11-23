@@ -1,6 +1,7 @@
 /**
- * Klocki modułu 4 „Na skróty” (shadow IT, tryb prosty, D-132): laptop Bartka, okna darmowych narzędzi (czat AI, prywatny dysk w chmurze,
- * dokument), ikona programu z internetu, prywatny pendrive i tablica z kartami skutków. Klocki rysują tylko kształty i wystawiają sloty
+ * Klocki modułu 4 „Na skróty” (shadow IT, tryb prosty, D-132): laptop Bartka, okna darmowych narzędzi (czat AI, prywatny dysk w chmurze),
+ * ikona programu z internetu, prywatny pendrive (dziś tylko miniatura modułu, D-201) i tablica z kartami skutków. Scena biurka i klocek
+ * okna dokumentu usunięte w B-183. Klocki rysują tylko kształty i wystawiają sloty
  * `slot-*` - napisy wpala scena klockami `textBox` ze `strings` (D-135), więc dopasowanie, minimum 16 px na telefonie (`minTextPx`) i
  * pseudo-lokalizację (D-143) sprawdza kompozytor. Narzędzia są fikcyjne i generyczne: bez logo, bez nazw prawdziwych usług.
  *
@@ -121,22 +122,6 @@ export const cloudWindow: PropFn<{ w?: number; h?: number; folder?: number; bar?
       'slot-tytul': titleSlot(w, bar),
       'slot-folder': { x: 30 + folder + 24, y: body.y, w: w - folder - 84, h: body.h },
     },
-  };
-};
-
-/** Okno dokumentu (raport w edytorze): nagłówek ze slotem `slot-tytul` i szare linie tekstu (bez słów). */
-export const docWindow: PropFn<{ w?: number; h?: number; titleH?: number }> = ({ w = 760, h = 560, titleH = 150 }) => {
-  const icon = `<rect x="32" y="26" width="24" height="30" rx="4" fill="${P.white}"/><path d="M37 36 h14 M37 42 h14 M37 48 h9" stroke="${P.purpleDark}" stroke-width="3"/>`;
-  const linesTop = BAR + 30 + titleH + 24;
-  const lines = Math.max(2, Math.floor((h - linesTop - 30) / 44));
-  return {
-    w, h,
-    svg:
-      windowFrame(w, h, P.purpleDark, icon, BAR) +
-      Array.from({ length: lines }, (_, i) =>
-        `<rect x="50" y="${linesTop + i * 44}" width="${(w - 100) * (i === lines - 1 ? 0.55 : 0.85 + ((i * 3) % 3) * 0.05)}" height="16" rx="8" fill="${P.grey}"/>`,
-      ).join(''),
-    parts: { 'slot-tytul': { x: 50, y: BAR + 30, w: w - 100, h: titleH } },
   };
 };
 
@@ -265,4 +250,4 @@ export const effectsBoard: PropFn<{ w?: number; h?: number; cols?: number; gap?:
   };
 };
 
-export const NASKROTY_PROPS = { laptopFront, chatWindow, cloudWindow, docWindow, appIcon, usbStick, effectsBoard };
+export const NASKROTY_PROPS = { laptopFront, chatWindow, cloudWindow, appIcon, usbStick, effectsBoard };

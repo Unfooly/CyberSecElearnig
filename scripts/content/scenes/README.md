@@ -223,40 +223,38 @@ Tylko w scenie ze `strings` (poprawki m3, tryb prosty): pieczęć `"layout": "co
 `sub` - podany to błąd) i liścik `"layout": "banner"` (320×140, wiersze `lines` łączone w jedno zdanie i zawijane, podpis pod nim). Raport bez dowodów
 rzeczowych (`bags: []`) ma wtedy duże sloty `slot-liscik`/`slot-pieczec` pod podpisem (pion) i na pustej prawej stronie teczki (poziom).
 
-### Klocki modułu 3 (`props-lancuszek.ts`, „Łańcuszek”, tryb prosty, D-140)
+### Klocki modułu 3 (`props-lancuszek.ts`, „Komunikatory i SMS-y”, tryb prosty, D-140, D-203)
 
-Pierwszy moduł w nowym modelu od początku: sceny ze `strings` (`pl`), napisy w klockach `textBox` z `"phoneScreen": true` (minimum 16 px
-na telefonie 390 px pilnuje kompozytor), tekst dowodów z kluczem `evidence` (m9). Klocki rysują tylko kształty i wystawiają sloty; komunikator
-i ekran logowania są generyczne - bez logo i nazwy aplikacji, adresy wyłącznie w domenach `.test`. Źródła: `examples/lancuszek/*.json`
-(scena telefonu poziomo `phone: "panorama"` i pionowo, zbliżenie ekranu logowania, miniatura bez tekstu). Telefon ma lokalny rozmiar
-700×1300, cele dotykowe (dymek, karta linku, karta logowania) co najmniej 230 jednostek wysokości - przy skali 0,76 w scenie 1600×1000 to
-≥ 44 px na scenie odniesienia trybu prostego (D-132).
+Sceny ze `strings` (`pl`), napisy w klockach `textBox` z `"phoneScreen": true` (minimum 16 px na telefonie 390 px pilnuje kompozytor), tekst
+dowodów z kluczem `evidence` (m9). Klocki rysują tylko kształty i wystawiają sloty; komunikator i SMS są generyczne - bez logo i nazwy
+aplikacji, adresy wyłącznie w domenach `.test`. Źródła: `examples/lancuszek/*.json` (rozmowa i SMS poziomo `phone: "panorama"` i pionowo,
+raport, miniatura bez tekstu). Telefon ma lokalny rozmiar 700×1300, cele dotykowe co najmniej 230 jednostek wysokości - przy skali 0,76
+w scenie 1600×1000 to ≥ 44 px na scenie odniesienia trybu prostego (D-132).
 
 | prop | do czego | części |
 |---|---|---|
-| `chatPhone` | telefon z rozmową na komunikatorze | `wiadomosc`, `link`, `logowanie`; sloty `slot-kontakt`, `slot-wiadomosc`, `slot-link-tytul`, `slot-link-adres`, `slot-logowanie`, `slot-czas-1`/`-2`/`-3` (godziny pod wiadomościami) |
-| `loginScreen` | ekran logowania z linku (zbliżenie), bez marki | sloty `slot-adres`, `slot-naglowek`, `slot-pole-login`, `slot-pole-haslo`, `slot-przycisk` |
 | `strangerChatPhone` | (D-203) rozmowa z „Martą” w nowym komunikatorze | `profil` (nagłówek + pasek „Nieznany numer”), `pytania`, `odpowiedz` (wysłana), `plik`; sloty `slot-kontakt`, `slot-baner`, `slot-pytania`, `slot-odpowiedz`, `slot-plik-nazwa`, `slot-plik-opis`, `slot-czas-1`/`-2`/`-3` |
 | `smsPhone` | (D-203) SMS „konto wygasa” (smishing) | `nadawca` (nagłówek + pigułka daty), `presja`, `link`, `stop` (trzy wiersze jednej wiadomości); sloty `slot-nadawca`, `slot-data`, `slot-presja`, `slot-link`, `slot-stop` |
 | `chatPhoneIcon` | telefon z dymkami bez słów (miniatura modułu) | |
 
 Sceny D-203 (`examples/lancuszek/{komunikator,sms}{,-pion}.json`): pozycje `textBox` liczone ręcznie ze slotów - x sceny = x telefonu + slot.x ×
-skala (poziomo: telefon x 534, y 6, skala 0,76; pionowo: x 47,5, y 52, skala 1,15). Stara wersja (`chatPhone`, `loginScreen`) - do usunięcia (B-184).
+skala (poziomo: telefon x 534, y 6, skala 0,76; pionowo: x 47,5, y 52, skala 1,15). Klocki i sceny poprzedniej wersji („Łańcuszek”: telefon
+Oli, ekran logowania, odprawa) usunięte w B-184; obiekty w magazynie zostają dla starej wersji kursu.
 
 ### Klocki modułu 4 (`props-naskroty.ts`, „Na skróty”, shadow IT, tryb prosty, D-153)
 
 Model jak w module 3: klocki bez słów, napisy ze `strings` w `textBox` (`"minTextPx": 16` w każdej scenie), tekst dowodów z kluczem
 `evidence`. Sceny używają klocków w skali 1, więc pozycja `textBox` = pozycja elementu + slot (przeliczone ręcznie w
 `examples/na-skroty/*.json`). Narzędzia są fikcyjne i generyczne (bez logo); tabela klientów w oknie czatu jest rozmyta - bez danych.
-Cel dotykowy mniejszego rysunku (ikona programu, pendrive) to część `cel` z parametru `target` - może wychodzić poza rysunek. W scenie
-poziomej biurka pendrive siedzi w PRAWYM boku laptopa (`port: "right"`, `flip: true`): lewy dolny róg sceny zasłania dymek podpowiedzi.
+Cel dotykowy mniejszego rysunku (ikona programu, pendrive) to część `cel` z parametru `target` - może wychodzić poza rysunek. Po D-201
+(moduł według nagrania) klocki laptopa, okien, ikony i pendrive'a rysują już tylko miniaturę modułu; scena biurka Bartka, odprawa i klocek
+`docWindow` usunięte w B-183.
 
 | prop | do czego | części |
 |---|---|---|
 | `laptopFront` | laptop od frontu: `sw`, `sh`, `wallpaper`, `port: left\|right` | `slot-ekran`, `port` |
 | `chatWindow` | okno darmowego czatu AI z rozmytą tabelą: `w`, `h`, `bubbleH`, `bar` (wysokość paska tytułu) | `slot-tytul`, `slot-prosba` |
 | `cloudWindow` | okno prywatnego dysku w chmurze z folderem: `w`, `h`, `folder`, `bar` | `slot-tytul`, `slot-folder` |
-| `docWindow` | okno dokumentu (raport w edytorze): `w`, `h`, `titleH` | `slot-tytul` |
 | `appIcon` | ikona pobranego programu (bez liter): `size`, `target` | `cel` |
 | `usbStick` | prywatny pendrive: `len`, `flip`, `target` | `cel` |
 | `effectsBoard` | tablica korkowa z 4 kartami skutków: `w`, `h`, `cols`, `gap`, `iconH` | `karta-1`…`karta-4`, `slot-tytul-1`…`slot-tytul-4` |

@@ -1162,8 +1162,9 @@ describe('CoursePlayer: bloki oceniane (mail, zadanie tekstowe, podgląd wyboru)
     await screen.findByText(/Poprawna odpowiedź!/);
     expect(fetchMock.mock.calls[0][0]).toBe('/api/courses/course-1/blocks/domena/attempt');
 
-    // Jeden "Dalej" (D-106): po rozstrzygnięciu zadanie zgłasza gotowość, a jedyny „Dalej” (w pasku) zapisuje postęp.
-    expect(screen.getAllByRole('button', { name: /^Dalej$/ })).toHaveLength(1);
+    // Jeden "Dalej" (D-106): po rozstrzygnięciu zadanie zgłasza gotowość, a jedyny „Dalej” (w pasku) zapisuje postęp. Gotowość idzie z
+    // efektu po wyniku - na wolnym CI przycisk bywa jeszcze „Sprawdź”, gdy tekst wyniku już jest (PR #207), więc czekamy na „Dalej”.
+    await waitFor(() => expect(screen.getAllByRole('button', { name: /^Dalej$/ })).toHaveLength(1), { timeout: 5000 });
     fireEvent.click(screen.getByRole('button', { name: /^Dalej$/ }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     expect(fetchMock.mock.calls[1][0]).toBe('/api/courses/course-1/progress');

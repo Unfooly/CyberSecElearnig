@@ -127,6 +127,8 @@ specyfikacja nie podawała (narracje, karty przedmiotów, informacja zwrotna, od
 Wszystkie ze `strings` (`pl`), tekst ≥ 16 px na 390 px (`minTextPx: 16`), tekst potrzebny do zadania z kluczem `evidence`, każda
 scena zielona w `xx` (pseudo-lokalizacja). Arkusze i zrzuty (pl-PL) do `docs/brand/screens/m4/` - przegląd właściciela przed merge.
 
+> Stan 2026-11-23: `odprawa` i `biurko-bartka` zastąpione grafikami według nagrania (D-201), źródła usunięte w B-183.
+
 | grafika | wariant pionowy | tekst wpalony |
 |---|---|---|
 | `odprawa` (wieczór, laptop „Raport na jutro, 9:00”) | tak | „Raport na jutro, 9:00” |

@@ -25,8 +25,6 @@ const scenes = targets.flatMap((target) =>
  * publikacja assetów i wersja kursu), więc idzie osobnym PR. Wartość - element i slot z komunikatu błędu (pierwszy błąd sceny).
  */
 const KNOWN_TOO_TIGHT: Record<string, string> = {
-  'lancuszek/logowanie-zoom': '"tekst-adres", język xx, slot "text"',
-  'lancuszek/odprawa': '"tekst-naglowek", język xx, slot "text"',
   'lancuszek/zamkniecie-pieczec': '"pieczec", język xx, slot "text"',
   'lancuszek/zamkniecie-raport': '"raport", język xx, slot "signature"',
 };

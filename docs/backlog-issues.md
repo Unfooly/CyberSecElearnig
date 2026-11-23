@@ -884,6 +884,8 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   testy scen, które ich używają) - usunąć (obiekty w R2 zostają dla starej wersji kursu); (3) liścik komisarza w raporcie („Łańcuszek
   przerwany.”) pasuje do wątku łańcuszka, ale nie do historii Oli - rozważyć nowy przy nagrywaniu lektora.
 - Akceptacja: (1) nagrane i `--check` zielony; (2)-(3) zrobione albo świadomie odrzucone (wpis tutaj).
+- **Stan 2026-11-23:** (2) zrobione (`chore/sprzatanie-m3-m4`: 5 SVG, 7 plików scen, klocki `chatPhone`/`loginScreen`, wpisy w
+  `pseudo-locale.test.ts`, README kompozytora). Zostają (1) lektor i (3) liścik - przy nagrywaniu lektora.
 
 ### B-183 Moduł 4 według nagrania (D-201) - lektor i sprzątanie
 - Etykiety: `P2`, `mod:kursy`, `content` · Źródło: decyzja właściciela 2026-11-22 i code review D-201
@@ -895,6 +897,10 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   (3) numeracja „Pytanie N z M” liczy też pytanie `instalowac` przed quizem - rozważyć numerację w ramach quizu; (4) cel modułu „Gdy coś
   poszło nie tak – zgłoś do IT” uczy już tylko zasada 3 w raporcie (pytanie `juz-wklejone` usunięte) - przeformułować cel albo dodać ekran.
 - Akceptacja: (1) nagrane i `--check` zielony; (2)-(4) zrobione albo świadomie odrzucone (wpis tutaj).
+- **Stan 2026-11-23:** (2) zrobione (`chore/sprzatanie-m3-m4`: 4 SVG, 6 plików scen, klocek `docWindow`, README kompozytora; klocki
+  laptopa, okien, ikony i pendrive'a zostają - rysują miniaturę modułu); (3) zrobione w D-207 (numeracja tylko w quizie, `instalowac` bez
+  numeru); (4) **świadomie zostawione** - zasada 3 raportu („Coś poszło nie tak? Zgłoś od razu”) uczy tego wprost, a zmiana celów tworzy
+  nową wersję kursu bez zmiany treści ekranów. Zostaje (1) lektor.
 
 ### B-182 Ilustracja na ekranie monitora (D-200) - uwagi z review
 - Etykiety: `P3`, `mod:odtwarzacz`, `test` · Źródło: code review D-200
@@ -1150,6 +1156,8 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   `lancuszek/zamkniecie-raport-pion` (`evidence`, 208×50), `lancuszek/zamkniecie-raport` (`signature`, 204×62). Po poprawce pierwszego
   slotu sceny może wyjść następny. Poprawka slotu zmienia też grafikę PL: przebudowa, publikacja assetów (`--assets --storage r2`),
   nowa wersja kursu (content-import), a dla trofeum - plik w `apps/web/public/achievements/pl/`.
+- **Stan 2026-11-23:** `lancuszek/logowanie-zoom` i `lancuszek/odprawa` odpadły razem z poprzednią wersją modułu 3 (B-184), trofeum już
+  przechodzi; w `KNOWN_TOO_TIGHT` zostały `lancuszek/zamkniecie-pieczec` i `lancuszek/zamkniecie-raport`.
 - Akceptacja: `KNOWN_TOO_TIGHT` pusta, sceny w `xx` przechodzą; tekst PL bez skracania (decyzja właściciela 2026-10-16); m3 wygląda
   w PL jak dotąd albo lepiej (zrzuty 390×844 i desktop do przeglądu właściciela); `--assets --check` zielone.
 

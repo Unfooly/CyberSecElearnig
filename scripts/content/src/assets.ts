@@ -40,6 +40,8 @@ export const ASSET_PATHS: string[][] = [
   ['hotspots', '*', 'media', 'scene', 'hotspots', '*', 'media', 'imagePortrait'],
   ['hotspots', '*', 'media', 'scene', 'hotspots', '*', 'media', 'audioUrl'],
   ['hotspots', '*', 'media', 'scene', 'hotspots', '*', 'media', 'image'],
+  // Ilustracja przodu karty obracanej (SCENE_HOTSPOTS presentation: 'flipCards', D-209).
+  ['hotspots', '*', 'cardImage'],
   // Ilustracja obok tekstu albo pytania (NARRATIVE, QUIZ, D-200).
   ['illustration', 'image'],
   // Grafika kroków odprawy (BRIEFING, D-084): scena kroku i zamknięta teczka kroku caseFile.

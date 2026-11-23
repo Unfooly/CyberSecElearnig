@@ -272,6 +272,57 @@ describe('parseModule: walidacja modułu', () => {
     }, 'evidence wymaga pola note');
   });
 
+  describe('karty obracane (presentation: flipCards, D-209)', () => {
+    // Fixture: scena z kartami - tylko przedmioty z treścią, bez mediów, drzwi i ✓.
+    const asCards = (m: TestModule) => {
+      const scene = blockOf(m, 'SCENE_HOTSPOTS');
+      scene.presentation = 'flipCards';
+      scene.hotspots = scene.hotspots
+        .filter((h: Record<string, any>) => h.action === undefined && h.done === undefined)
+        .slice(0, 3)
+        .map((h: Record<string, any>, i: number) => {
+          const { media: _media, ...rest } = h;
+          return { ...rest, content: rest.content ?? `Odwrocie ${i}.`, cardImage: `images/karta-${i}.webp` };
+        });
+      delete scene.requiredHotspots;
+      return scene;
+    };
+
+    it('przyjmuje karty z ilustracją i treścią; cardImage i presentation trafiają do klienta', () => {
+      const module = fullModuleForTests();
+      asCards(module);
+      const scene = parseModule(module).blocks.find((b) => b.type === 'SCENE_HOTSPOTS') as Record<string, any>;
+      expect(scene.presentation).toBe('flipCards');
+      expect(scene.hotspots.every((h: Record<string, any>) => typeof h.cardImage === 'string')).toBe(true);
+      const context = { shuffleSeed: () => [1, 2, 3, 4] as [number, number, number, number], opaqueId: (blockId: string, itemId: string) => `x${blockId}-${itemId}` };
+      const client = toClientBlock(scene as never, context) as Record<string, any>;
+      expect(client.presentation).toBe('flipCards');
+      expect(client.hotspots.map((h: Record<string, any>) => h.cardImage)).toEqual(scene.hotspots.map((h: Record<string, any>) => h.cardImage));
+    });
+
+    it('każda karta wymaga cardImage i content; bez action/media/done; 2-6 kart', () => {
+      expectInvalid((m) => {
+        delete asCards(m).hotspots[0].cardImage;
+      }, 'flipCards wymaga cardImage');
+      expectInvalid((m) => {
+        delete asCards(m).hotspots[1].content;
+      }, 'flipCards wymaga content');
+      expectInvalid((m) => {
+        asCards(m).hotspots[0].media = { kind: 'image', src: 'images/x.webp', alt: 'X' };
+      }, 'flipCards nie łączy się z action, media ani done');
+      expectInvalid((m) => {
+        const scene = asCards(m);
+        scene.hotspots = scene.hotspots.slice(0, 1);
+      }, 'flipCards wymaga 2-6 kart');
+    });
+
+    it('cardImage tylko w trybie kart', () => {
+      expectInvalid((m) => {
+        blockOf(m, 'SCENE_HOTSPOTS').hotspots[0].cardImage = 'images/karta.webp';
+      }, 'cardImage tylko z presentation: flipCards');
+    });
+  });
+
   describe('wariant pionowy sceny i ekran monitora (D-116)', () => {
     const withPortrait = (m: TestModule) => {
       const scene = blockOf(m, 'SCENE_HOTSPOTS');

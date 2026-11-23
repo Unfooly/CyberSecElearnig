@@ -17,6 +17,8 @@ const TECHNICAL_KEYS = new Set([
   'id', 'type', 'kind', 'blockId', 'fromBlock', 'image', 'imagePortrait', 'scene', 'portrait', 'src', 'audio', 'audioUrl', 'icon',
   'voice', 'layout', 'variant', 'phase', 'evidence', 'href', 'url', 'side', 'target', 'tone', 'mood', 'state', 'format', 'mode',
   'align', 'role', 'slot', 'speaker', 'channel', 'stamp', 'note', 'time',
+  // Tryb kart obracanych SCENE_HOTSPOTS (D-209, 'flipCards' - camelCase nie łapie się na wzorzec id).
+  'presentation',
   // Adresy e-mail w makiecie maila (EMAIL_ANALYSIS, moduł 1 od D-176) - nie tłumaczy się ich.
   'fromAddress', 'to',
 ]);

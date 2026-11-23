@@ -65,6 +65,15 @@ export class CoursesController {
     return this.coursesService.restart(user.organizationId, user.userId, courseId);
   }
 
+  // „Powtórz quiz” (D-207): tylko własne, aktywne przypisanie z niezaliczonym quizem - czyści odpowiedzi quizu i wraca do jego pierwszego
+  // pytania. Role jak restart; limit żądań - globalny throttler.
+  @Post(':courseId/quiz/retry')
+  @HttpCode(HttpStatus.OK)
+  @Roles(...COURSE_ROLES)
+  retryQuiz(@CurrentUser() user: AuthenticatedUser, @Param('courseId') courseId: string, @Headers('accept-language') acceptLanguage?: string) {
+    return this.coursesService.retryQuiz(user.organizationId, user.userId, courseId, acceptLanguage);
+  }
+
   // 200, nie domyślne 201 - obie akcje aktualizują istniejący
   // CourseAssignment, nie tworzą nowego zasobu (tak jak login/refresh w
   // auth.controller.ts).

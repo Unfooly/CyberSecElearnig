@@ -867,6 +867,13 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja właściciela - (1) tytuły z `course_versions.title` w języku gracza i plakietka na karcie kursu; (2) lekcja per język
   szablonu/kampanii; (3) czy i kiedy tłumaczyć interfejs (CLAUDE.md: bez pełnego frameworka i18n w MVP).
 
+### B-185 Quiz - osiągnięcia za 100% po „Powtórz quiz” (D-207)
+- Etykiety: `P3`, `mod:grywalizacja`, `decyzja` · Źródło: D-204/D-207 (znane ograniczenie)
+- Opis: po niezaliczonym podejściu gracz widział klucz pytań, a wynik kursu liczy się z ostatniego, zaliczonego podejścia - może więc
+  dostać „Sprawa bez skazy” / „Najpierw pytam IT” (100%) i bonus XP za 100% po powtórce. Do decyzji: (a) zostawić; (b) 100% tylko przy
+  zaliczeniu za pierwszym razem (`progress.quiz.attempts === 1`); (c) przy powtórce inna kolejność odpowiedzi albo pula pytań.
+- Akceptacja: decyzja właściciela i - przy (b)/(c) - zmiana z testem.
+
 ### B-184 Moduł 3 według nagrania (D-203) - lektor i sprzątanie
 - Etykiety: `P2`, `mod:kursy`, `content` · Źródło: decyzja właściciela 2026-11-22 (D-203)
 - Opis: (1) **lektor** - 9 narracji (głos `komisarz`, teksty w `docs/modules/modul-3-komunikatory-nagranie.md`) po powrocie do płatnego

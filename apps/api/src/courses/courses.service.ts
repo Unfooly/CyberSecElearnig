@@ -32,6 +32,7 @@ import {
 import { resolveVersion, upgradeUnstartedPin } from './course-versions';
 import { moduleMetaFor, warmModuleMeta } from './module-meta';
 import { ProgressV2, computeScore, entryOf, readProgress, toJson } from './progress';
+import { QuizResult, finalQuizIndexes, quizResultOf, quizScore, quizViewOf } from './quiz';
 import {
   AttemptResponse,
   ChallengeResponse,
@@ -279,6 +280,38 @@ export class CoursesService implements OnModuleInit {
     });
   }
 
+  /**
+   * „Powtórz quiz” (D-207): tylko WŁASNE, AKTYWNE przypisanie z NIEZALICZONYM ostatnim podejściem do quizu (`progress.quiz.failed`). Czyści
+   * odpowiedzi pytań quizu (wpisy w `progress.blocks`), zostawia historię przed quizem i licznik podejść, cofa pozycję na pierwsze pytanie
+   * quizu i przelicza wynik. Wyścig: `lockOwnAssignment` (FOR UPDATE) - drugie wywołanie widzi już `failed: false` i dostaje 409.
+   */
+  async retryQuiz(organizationId: string, userId: string, courseId: string, acceptLanguage?: string): Promise<{ currentBlockIndex: number; score: number | null }> {
+    return this.tenantPrisma.runInOrgContext(organizationId, async (tx) => {
+      await this.lockOwnAssignment(tx, organizationId, userId, courseId);
+      const assignment = await this.findOwnAssignment(tx, organizationId, userId, courseId);
+      const progress = readProgress(assignment.progress);
+      if (assignment.status === AssignmentStatus.COMPLETED || !progress.quiz?.failed) {
+        throw new ConflictException('Quiz nie wymaga powtórki.');
+      }
+      const version = await resolveVersion(tx, assignment, playerLocaleOf(assignment, acceptLanguage));
+      const indexes = finalQuizIndexes(version.blocks, version.simpleMode);
+      if (indexes.length === 0) throw new ConflictException('Quiz nie wymaga powtórki.');
+      for (const index of indexes) delete progress.blocks[version.blocks[index].id];
+      // Nowe podejście bez wyniku (licznik podejść zostaje) - /start nie pokazuje wyniku poprzedniego jako „zaliczony”.
+      progress.quiz = { attempts: progress.quiz.attempts, failed: false, correct: 0, total: 0 };
+      const currentBlockIndex = indexes[0];
+      const score = computeScore(progress);
+      // `currentBlockIndex` w warunku to druga linia obrony obok FOR UPDATE (wiersz bez zmian od odczytu), nie sprawdzenie, że to ostatnie
+      // pytanie quizu - o tym decyduje `progress.quiz.failed` wyżej.
+      const claim = await tx.courseAssignment.updateMany({
+        where: { id: assignment.id, organizationId, userId, archivedAt: null, currentBlockIndex: assignment.currentBlockIndex },
+        data: { progress: toJson(progress), currentBlockIndex, score },
+      });
+      if (claim.count === 0) throw new ConflictException('Ten postęp został już zapisany (np. w innej karcie przeglądarki). Odśwież stronę.');
+      return { currentBlockIndex, score };
+    });
+  }
+
   async startOrContinue(
     organizationId: string,
     userId: string,
@@ -329,6 +362,9 @@ export class CoursesService implements OnModuleInit {
         locales: version.locales,
         localeFallback: version.localeFallback,
         moduleInfo: moduleInfoOf(assignment.course, version.locale),
+        // Quiz modułu (D-207): id pytań quizu (numeracja „Pytanie N z M” tylko w quizie) i wynik ostatniego podejścia (niezaliczony -
+        // ekran „Powtórz quiz” także po odświeżeniu strony). Bez quizu (tryb pełny, moduł bez pytań na końcu) - null.
+        quiz: quizViewOf(version.blocks, version.simpleMode, readProgress(current.progress)),
       };
     });
   }
@@ -369,6 +405,13 @@ export class CoursesService implements OnModuleInit {
         throw new ConflictException('Treść kursu się zmieniła - odśwież stronę.');
       }
       const progress = readProgress(assignment.progress);
+      // Quiz modułu (D-207): po niezaliczonym podejściu nic za quizem (raport, ukończenie, XP, odznaki) nie przejdzie bez „Powtórz quiz”.
+      const quizIndexes = finalQuizIndexes(blocks, version.simpleMode);
+      const lastQuizIndex = quizIndexes.length > 0 ? quizIndexes[quizIndexes.length - 1] : -1;
+      // Tylko gdy wersja ma quiz (jak retryQuiz) - bez pułapki bez wyjścia przy stanie `failed` bez pytań quizu (security review D-207).
+      if (progress.quiz?.failed && quizIndexes.length > 0) {
+        throw new ConflictException('Quiz niezaliczony - najpierw powtórz quiz.');
+      }
       const context = shuffleContext(this.shuffleSecret, assignment.id, version.id);
       // Rozmowa na żywo (D-124): konto z „Bez limitów czasu” nie ma krawędzi ciszy - serwer bierze ustawienie z konta, nie z `timed`
       // od klienta. Odczyt tylko przy tym typie bloku (ten sam wiersz użytkownika co przypisanie, organizacja z JWT, RLS).
@@ -386,8 +429,17 @@ export class CoursesService implements OnModuleInit {
       for (const key of result.notesAdded) {
         if (!progress.notes.includes(key)) progress.notes.push(key);
       }
+      // Ostatnie pytanie quizu (D-207): wynik podejścia - poniżej progu blokada dalej (wyżej) do „Powtórz quiz”.
+      let quizResult: QuizResult | undefined;
+      if (dto.blockIndex === lastQuizIndex) {
+        const scored = quizScore(progress, blocks, quizIndexes);
+        progress.quiz = { attempts: (progress.quiz?.attempts ?? 0) + 1, failed: !scored.passed, correct: scored.correct, total: scored.total };
+        quizResult = quizResultOf(progress.quiz);
+      }
 
-      const currentBlockIndex = assignment.currentBlockIndex + 1;
+      // Niezaliczony quiz (D-207): pozycja zostaje na ostatnim pytaniu (blok zapisany z wynikiem) - kurs się nie kończy, nawet gdy quiz
+      // zamyka moduł bez raportu; dalej tylko przez „Powtórz quiz” (retryQuiz).
+      const currentBlockIndex = quizResult && !quizResult.passed ? assignment.currentBlockIndex : assignment.currentBlockIndex + 1;
       const isComplete = currentBlockIndex >= blocks.length;
       const score = computeScore(progress);
       const status = isComplete ? AssignmentStatus.COMPLETED : AssignmentStatus.IN_PROGRESS;
@@ -460,6 +512,8 @@ export class CoursesService implements OnModuleInit {
         },
         // Dowody po tym zapisie (liczby liczy serwer; total znany od startu dla wszystkich bloków, D-055 pkt 2).
         evidence,
+        // Wynik quizu (D-207) - tylko przy zapisie ostatniego pytania quizu.
+        ...(quizResult ? { quiz: quizResult } : {}),
         // Blok wstrzymany w /start (omówienie nagrania, D-115), do którego gracz właśnie dotarł - pełna treść dopiero teraz.
         ...(revealed ? { revealedBlock: revealed } : {}),
         // Notatki dopisane TYM zapisem (treść z modułu; dla kryteriów maila ujawniana dopiero po odpowiedzi), żeby notatnik pokazał je od razu.

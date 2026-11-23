@@ -34,6 +34,9 @@ export class CourseProgressResponseDto {
   // Pełna treść bloku, do którego gracz właśnie dotarł, gdy /start go wstrzymał (omówienie nagrania, D-115 - client-view.ts,
   // projectBlockForStart). Ta sama projekcja co /start (toClientBlock).
   revealedBlock?: { blockIndex: number; block: Record<string, unknown> };
+  // Wynik quizu modułu (D-207) - tylko przy zapisie ostatniego pytania quizu w trybie prostym. `passed: false` - kurs zatrzymany na
+  // ostatnim pytaniu (currentBlockIndex bez zmian), dalej tylko przez POST /courses/:id/quiz/retry.
+  quiz?: { correct: number; total: number; passPercent: number; passed: boolean; attempts: number };
   gamification!: {
     xpGained: number;
     newLevel: number;

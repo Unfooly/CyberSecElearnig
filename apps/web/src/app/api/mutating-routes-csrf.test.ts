@@ -49,6 +49,8 @@ const PROTECTED: Row[] = [
   { route: './courses/[courseId]/self-assign/route.ts', method: 'POST', params: { courseId: 'c1' } },
   // "Rozpocznij od nowa" (D-069)
   { route: './courses/[courseId]/restart/route.ts', method: 'POST', params: { courseId: 'c1' } },
+  // „Powtórz quiz” (D-207)
+  { route: './courses/[courseId]/quiz/retry/route.ts', method: 'POST', params: { courseId: 'c1' } },
   // Pracownicy i konto (B-080)
   { route: './users/route.ts', method: 'POST', body: { email: 'a@b.pl', firstName: 'A', lastName: 'B', role: 'EMPLOYEE' } },
   { route: './users/[id]/route.ts', method: 'PATCH', params: { id: 'u1' }, body: { firstName: 'A' } },

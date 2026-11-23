@@ -668,6 +668,8 @@ export interface CourseDetail {
   localeFallback?: boolean;
   /** Ekran startu i końca modułu (szablon modułu, D-163); bez pola (starsze odpowiedzi, testy) - bez ekranu startu. */
   moduleInfo?: ModuleInfo;
+  /** Quiz modułu (D-207): id pytań quizu, próg i wynik ostatniego podejścia; null/brak - moduł bez quizu albo starsze API. */
+  quiz?: { blockIds: string[]; passPercent: number; result: QuizResultView | null } | null;
 }
 
 /** Okładki modułu (D-163): ścieżki zasobów w języku treści; null - ciemne tło. */
@@ -757,7 +759,18 @@ export interface CourseCompletionReward {
   levelProgressNewPercent?: number;
 }
 
+/** Wynik podejścia do quizu modułu (D-207): dobrze/wszystkie, próg w %, zaliczony, numer podejścia. */
+export interface QuizResultView {
+  correct: number;
+  total: number;
+  passPercent: number;
+  passed: boolean;
+  attempts: number;
+}
+
 export interface CourseProgressResponse {
+  /** Wynik quizu (D-207) - tylko przy zapisie ostatniego pytania quizu; `passed: false` - pozycja bez zmian, dalej przez „Powtórz quiz”. */
+  quiz?: QuizResultView;
   assignmentId: string;
   status: AssignmentStatus;
   currentBlockIndex: number;

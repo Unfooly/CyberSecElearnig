@@ -3,6 +3,8 @@ import path from 'node:path';
 import { notFound } from 'next/navigation';
 import {
   DEFAULT_CONTENT_LOCALE,
+  QUIZ_PASS_PERCENT,
+  finalQuizIndexes,
   localizeContent,
   moduleSchema,
   pseudoLocalize,
@@ -104,6 +106,17 @@ function startScreen(contentModule: ResolvedModule, pseudo: boolean, noCover: bo
   };
 }
 
+/** Quiz modułu w podglądzie (D-207) - jak `quizViewOf` w API, ta sama reguła z packages/content; `failed` - wynik 1 z N poniżej progu. */
+function harnessQuiz(blocks: readonly { id: string; type: string }[], simpleMode: boolean, failed: boolean): CoursePlayerInitialState['quiz'] {
+  const blockIds = finalQuizIndexes(blocks, simpleMode).map((index) => blocks[index].id);
+  if (blockIds.length === 0) return null;
+  return {
+    blockIds,
+    passPercent: QUIZ_PASS_PERCENT,
+    result: failed ? { correct: 1, total: blockIds.length, passPercent: QUIZ_PASS_PERCENT, passed: false, attempts: 1 } : null,
+  };
+}
+
 export default function PlayerHarnessPage({
   searchParams,
 }: {
@@ -116,6 +129,7 @@ export default function PlayerHarnessPage({
     narration?: string;
     noPortrait?: string;
     localeUi?: string;
+    quizFailed?: string;
     pseudo?: string;
     start?: string;
     backdrop?: string;
@@ -204,6 +218,9 @@ export default function PlayerHarnessPage({
     score: null,
     // Tryb prosty (D-132): z modułu, jak z wersji kursu w /start. Ocena kliknięć (/check) - layout-check podstawia odpowiedź z treści.
     simpleMode: parsedModule.simpleMode === true,
+    // Quiz modułu (D-207) jak w /start: ciąg pytań przed raportem (wspólna reguła z packages/content, finalQuizIndexes).
+    // `?quizFailed=1` - ekran „Quiz niezaliczony” (1 z liczby pytań) do layout-check i zrzutów.
+    quiz: harnessQuiz(parsedModule.blocks, parsedModule.simpleMode === true, searchParams.quizFailed === '1'),
     // `?localeUi=switch|badge` (D-133): pasek górny z przełącznikiem języka (kurs dwujęzyczny) albo z plakietką „Available in Polish only” -
     // layout-check sprawdza nimi najciaśniejszy pasek (pierwszy blok z „Pomiń odprawę”). Treść zostaje polska (podgląd układu).
     ...(searchParams.localeUi === 'switch' ? { locale: 'pl' as const, locales: ['pl', 'en'] as ('pl' | 'en')[], localeFallback: false } : {}),

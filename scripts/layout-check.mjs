@@ -3015,10 +3015,12 @@ try {
       }
       // (q10) Karty obracane (D-209, moduł 4 `skutki`): karty z ilustracją w obszarze bloku (szeroko - jeden rząd), podpis ≥ 16 px; po
       // obróceniu wszystkich - tekst odwrocia ≥ 16 px i w całości w karcie (bez przewijania odwrocia), „Dalej” aktywne, strona bez przewijania.
-      {
-        const label = `${viewport.name} / karty obracane / na-skroty skutki`;
+      // Także w pseudo-lokalizacji `xx` (B-187: tekst ~35% dłuższy) - na komputerze. Na telefonie odwrocie w `xx` się nie mieści
+      // (844x390: +49 px) - przed wersją EN modułu 4 decyzja: krótsze teksty EN albo powiększone odwrocie (B-187, pkt 1).
+      for (const pseudo of viewport.width >= 1024 ? [false, true] : [false]) {
+        const label = `${viewport.name} / karty obracane / na-skroty skutki${pseudo ? ' xx' : ''}`;
         errors.length = 0;
-        await page.goto(`${WEB}/dev/player-harness?module=na-skroty&block=skutki`);
+        await page.goto(`${WEB}/dev/player-harness?module=na-skroty&block=skutki${pseudo ? '&pseudo=1' : ''}`);
         await page.getByTestId('flip-cards-block').waitFor({ timeout: 30000 });
         await page.waitForFunction(() => [...document.querySelectorAll('[data-testid="flip-card-image"]')].every((img) => img.complete && img.naturalWidth > 0), null, { timeout: 15000 });
         const buttons = page.getByTestId('flip-card').locator('button');
@@ -3059,7 +3061,7 @@ try {
         if (c.next.disabled) fail(`${label}: (q10) po obróceniu wszystkich kart „Dalej” nieaktywne.`);
         if (c.pageScroll.some((v) => v > 1)) fail(`${label}: (q10) przewija się strona (${c.pageScroll}).`);
         if (errors.length > 0) fail(`${label}: (q10) błędy: ${errors.join(' | ')}`);
-        await shot(page, `${viewport.name}-karty-obracane`);
+        await shot(page, `${viewport.name}-karty-obracane${pseudo ? '-xx' : ''}`);
         step(`${label}: (q10) 4 karty w obszarze bloku${wideArea ? ' w jednym rzędzie' : ''}, podpis i odwrocie ≥ 16 px, tekst w całości, „Dalej” po wszystkich`, true);
       }
       await context.close();

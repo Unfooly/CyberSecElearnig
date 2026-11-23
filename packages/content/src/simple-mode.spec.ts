@@ -123,6 +123,17 @@ describe('tryb prosty (simpleMode)', () => {
     expect(errorsOf(five)).toMatch(/najwyżej 4 cele \(jest 5\)/);
     const small = mutate((m) => Object.assign(byType(m, 'SCENE_HOTSPOTS').hotspots[0], { width: 5, height: 10 }));
     expect(errorsOf(small)).toMatch(/hotspots\[0\] \(link\): tryb prosty - cel dotykowy min\. 44×44 px na scenie 480×270 px \(jest 24×27\)/);
+    // Karty obracane (D-209, B-187): celem jest cała karta - prostokąty sceny nie podlegają regule 44×44 (limit 4 celów zostaje).
+    const smallCards = mutate((m) => {
+      const scene = byType(m, 'SCENE_HOTSPOTS');
+      scene.presentation = 'flipCards';
+      scene.hotspots = scene.hotspots.slice(0, 2).map((h: Record<string, unknown>, i: number) => {
+        const { media: _media, action: _action, done: _done, ...rest } = h;
+        return { ...rest, width: 5, height: 10, content: `Odwrocie ${i}.`, cardImage: `images/karta-${i}.webp` };
+      });
+    });
+    // Moduł w całości poprawny (pusta lista błędów) - asercja nie przejdzie „na pusto”, gdyby fixture padła wcześniej na schemacie.
+    expect(errorsOf(smallCards)).toBe('');
     const nested = mutate((m) => {
       const scene = byType(m, 'SCENE_HOTSPOTS');
       scene.hotspots[2] = {

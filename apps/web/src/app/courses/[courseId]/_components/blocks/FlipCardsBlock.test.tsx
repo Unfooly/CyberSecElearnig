@@ -113,6 +113,15 @@ describe('FlipCardsBlock (D-209)', () => {
     expect(ready.current).not.toBeNull();
   });
 
+  it('ilustracja się nie wczytała (B-187): przód z podpisem zamiast pustego pola, karta dalej się obraca', () => {
+    setup();
+    fireEvent.error(screen.getAllByTestId('flip-card-image')[0]);
+    expect(screen.getAllByTestId('flip-card-image')).toHaveLength(1);
+    expect(screen.getByTestId('flip-card-fallback')).toHaveTextContent('Dane firmy');
+    fireEvent.click(card('Dane firmy'));
+    expect(card('Dane firmy')).toHaveAttribute('aria-pressed', 'true');
+  });
+
   it('podgląd ukończonego bloku: karty da się obracać, bez notatek i bez zgłaszania stanu', () => {
     const { onExplore } = setup({ review: true });
     expect(card('Dane firmy')).toHaveAttribute('aria-pressed', 'false');

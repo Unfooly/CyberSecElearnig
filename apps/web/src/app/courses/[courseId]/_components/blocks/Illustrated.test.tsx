@@ -43,6 +43,10 @@ describe('Illustrated (D-200)', () => {
     );
     expect(screen.getByTestId('illustrated')).toHaveAttribute('data-variant', 'feature');
     expect(screen.getByRole('img').closest('figure')!.className).toContain('sm:order-2');
+    // Poza ekranem monitora układ po szerokości okna (`sm:`), nie klasa monitora (B-182).
+    expect(screen.getByTestId('illustrated').className).toContain('sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]');
+    expect(screen.getByTestId('illustrated').className).not.toContain('monitor-illustrated');
+    expect(screen.getByRole('img').className).toContain('sm:max-h-[min(66dvh,640px)]');
     rerender(
       <Illustrated illustration={illustration} contentBase={BASE}>
         <p>Treść</p>
@@ -50,6 +54,9 @@ describe('Illustrated (D-200)', () => {
     );
     expect(screen.getByTestId('illustrated')).toHaveAttribute('data-variant', 'slide');
     expect(screen.getByRole('img').closest('figure')!.className).not.toContain('sm:order-2');
+    expect(screen.getByTestId('illustrated').className).toContain('sm:grid-cols-2');
+    expect(screen.getByTestId('illustrated').className).not.toContain('monitor-illustrated');
+    expect(screen.getByRole('img').className).not.toContain('monitor-illustrated-img');
   });
 
   it('niebezpieczna ścieżka obrazu (adres z zewnątrz) - bez grafiki, sama treść', () => {
@@ -89,9 +96,11 @@ describe('Illustrated (D-200)', () => {
     const screenArea = screen.getByTestId('monitor-screen');
     const quiz = within(screenArea).getByTestId('illustrated');
     expect(quiz).toHaveAttribute('data-variant', 'screen');
-    // D-206: na ekranie monitora kolumny do góry (nie środka), a na niskim telefonie w pionie ilustracja schowana (próg jak w layout-check q7).
-    expect(quiz.className).toContain('sm:items-start');
-    expect(quiz.className).not.toContain('sm:items-center');
+    // B-182: kolumny na ekranie monitora z CSS po kontenerze `monitor` (`.monitor-illustrated`, układ sprawdza layout-check q7), nie po
+    // szerokości okna; na niskim telefonie w pionie ilustracja schowana (D-206, próg jak w layout-check q7).
+    expect(quiz.className).toBe('monitor-illustrated');
+    expect(within(quiz).getByRole('img').className).toContain('monitor-illustrated-img');
+    expect(within(quiz).getByRole('img').className).not.toMatch(/max-h-|sm:/);
     expect(within(quiz).getByTestId('illustration-figure').className).toContain('max-sm:[@media(max-height:820px)]:hidden');
     expect(within(quiz).getByText('Instalować?')).toBeInTheDocument();
     expect(within(quiz).getByRole('img', { name: illustration.alt })).toBeInTheDocument();

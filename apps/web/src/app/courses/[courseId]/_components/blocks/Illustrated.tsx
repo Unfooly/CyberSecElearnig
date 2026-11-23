@@ -32,24 +32,20 @@ export default function Illustrated({
 }) {
   const src = illustration ? contentAssetUrl(contentBase, illustration.image, 'image') : null;
   if (!illustration || !src) return <>{children}</>;
+  // Ekran monitora: kolumny i wysokość ilustracji w `globals.css` (`.monitor-illustrated`) - tym samym zapytaniem kontenerowym co układ
+  // monitora (B-182), nie po szerokości okna: wąski obszar bloku przy szerokim oknie (844x390, tablet) to karta w ramce i jedna kolumna.
   const size = screen
-    ? 'max-h-[20cqh] sm:max-h-[min(52cqh,360px)]'
+    ? 'monitor-illustrated-img'
     : feature
       ? 'max-h-[32dvh] sm:max-h-[min(66dvh,640px)]'
       : 'max-h-[32dvh] sm:max-h-[min(60dvh,420px)]';
-  const columns = screen
-    ? // Ekran monitora: kolumny do góry (nie środka) - przy długim pytaniu (4 długie odpowiedzi, moduł 5) kolumna treści jest wyższa niż
-      // ekran i wyśrodkowana ilustracja lądowała w połowie przewijanej treści (poza widocznym ekranem, 844x390 - layout-check q7).
-      'gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] sm:items-start sm:gap-6'
-    : feature
-      ? 'gap-5 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] sm:gap-10'
-      : 'gap-4 sm:grid-cols-2 sm:gap-8';
+  const layout = screen
+    ? 'monitor-illustrated'
+    : `flex w-full flex-col sm:grid sm:items-center ${
+        feature ? 'gap-5 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] sm:gap-10' : 'gap-4 sm:grid-cols-2 sm:gap-8'
+      }`;
   return (
-    <div
-      data-testid="illustrated"
-      data-variant={screen ? 'screen' : feature ? 'feature' : 'slide'}
-      className={`flex w-full flex-col sm:grid ${screen ? '' : 'sm:items-center '}${columns}`}
-    >
+    <div data-testid="illustrated" data-variant={screen ? 'screen' : feature ? 'feature' : 'slide'} className={layout}>
       <figure
         data-testid="illustration-figure"
         className={`flex shrink-0 justify-center${feature ? ' sm:order-2' : ''}${

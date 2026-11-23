@@ -2873,6 +2873,17 @@ try {
             return { natural: img.naturalWidth, height: r.height, inside: r.top >= s.top - 1 && r.bottom <= s.bottom + 1 && r.left >= s.left - 1 && r.right <= s.right + 1 };
           });
           if (ill.natural === 0 || ill.height < 60 || !ill.inside) fail(`${label}: (q7) ilustracja niewidoczna albo poza ekranem - ${JSON.stringify(ill)}.`);
+          // B-182: kolumny tym samym progiem co monitor (szeroko - dwie kolumny obok siebie, karta w ramce - ilustracja nad pytaniem), a w karcie
+          // zwarte odstępy (8 px) także w bloku pytania pod ilustracją.
+          const cols = await page.evaluate(() => {
+            const fig = document.querySelector('[data-testid="illustration-figure"]').getBoundingClientRect();
+            const content = document.querySelector('[data-testid="illustrated"] > div');
+            const c = content.getBoundingClientRect();
+            return { sideBySide: c.left >= fig.right - 1 && c.top < fig.bottom, below: c.top >= fig.bottom - 1, gap: getComputedStyle(content.firstElementChild).rowGap };
+          });
+          if (wide && !cols.sideBySide) fail(`${label}: (q7) szeroki monitor - ilustracja i pytanie powinny być obok siebie - ${JSON.stringify(cols)}.`);
+          if (!wide && !cols.below) fail(`${label}: (q7) karta w ramce - pytanie powinno być pod ilustracją - ${JSON.stringify(cols)}.`);
+          if (!wide && cols.gap !== '8px') fail(`${label}: (q7) karta w ramce - odstępy w bloku pytania ${cols.gap} zamiast 8px.`);
         }
         if (wide) {
           const s = manifest.screen;

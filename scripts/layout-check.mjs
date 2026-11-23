@@ -3013,6 +3013,55 @@ try {
         await shot(page, `${viewport.name}-ilustracja-tabela`);
         step(`${label}: (q8) ilustracja ${side ? 'z prawej (duża), tekst z lewej' : 'nad tekstem'}, tekst ≥ 16 px, bez przewijania strony`, true);
       }
+      // (q10) Karty obracane (D-209, moduł 4 `skutki`): karty z ilustracją w obszarze bloku (szeroko - jeden rząd), podpis ≥ 16 px; po
+      // obróceniu wszystkich - tekst odwrocia ≥ 16 px i w całości w karcie (bez przewijania odwrocia), „Dalej” aktywne, strona bez przewijania.
+      {
+        const label = `${viewport.name} / karty obracane / na-skroty skutki`;
+        errors.length = 0;
+        await page.goto(`${WEB}/dev/player-harness?module=na-skroty&block=skutki`);
+        await page.getByTestId('flip-cards-block').waitFor({ timeout: 30000 });
+        await page.waitForFunction(() => [...document.querySelectorAll('[data-testid="flip-card-image"]')].every((img) => img.complete && img.naturalWidth > 0), null, { timeout: 15000 });
+        const buttons = page.getByTestId('flip-card').locator('button');
+        const count = await buttons.count();
+        for (let i = 0; i < count; i += 1) await buttons.nth(i).click();
+        // Obrót 600 ms (bez reduced-motion) - pomiar po jego końcu.
+        await page.waitForTimeout(800);
+        const c = await page.evaluate(() => {
+          const area = document.querySelector('[data-testid="player-content-area"]').getBoundingClientRect();
+          const cells = [...document.querySelectorAll('[data-testid="flip-card"]')];
+          const rects = cells.map((cell) => cell.querySelector('.flip-card').getBoundingClientRect());
+          const next = document.querySelector('.pbar-next');
+          return {
+            count: cells.length,
+            flipped: cells.filter((cell) => cell.dataset.flipped === 'true').length,
+            inside: rects.every((r) => r.top >= area.top - 1 && r.bottom <= area.bottom + 1 && r.left >= area.left - 1 && r.right <= area.right + 1),
+            oneRow: rects.every((r) => Math.abs(r.top - rects[0].top) < 2),
+            minHeight: Math.min(...rects.map((r) => r.height)),
+            labelFont: Math.min(...cells.map((cell) => parseFloat(getComputedStyle(cell.querySelector('.flip-card-label')).fontSize))),
+            backs: cells.map((cell) => {
+              const face = cell.querySelector('.flip-card-back');
+              return { font: parseFloat(getComputedStyle(face.querySelector('[data-testid="flip-card-back"]')).fontSize), overflow: face.scrollHeight - face.clientHeight };
+            }),
+            next: { disabled: next?.disabled, text: next?.textContent?.trim() },
+            pageScroll: [document.documentElement.scrollWidth - innerWidth, document.documentElement.scrollHeight - innerHeight],
+          };
+        });
+        const wideArea = viewport.width / viewport.height >= 1.2;
+        if (c.count !== 4 || c.flipped !== 4) fail(`${label}: (q10) kart ${c.count}, odwróconych ${c.flipped} (oczekiwane 4/4).`);
+        if (!c.inside) fail(`${label}: (q10) karta poza obszarem bloku.`);
+        if (wideArea && !c.oneRow) fail(`${label}: (q10) szeroki ekran - karty powinny być w jednym rzędzie.`);
+        if (c.minHeight < 120) fail(`${label}: (q10) karta za niska (${Math.round(c.minHeight)} px).`);
+        if (c.labelFont < 15.9) fail(`${label}: (q10) podpis ${c.labelFont}px < 16px.`);
+        for (const [i, back] of c.backs.entries()) {
+          if (back.font < 15.9) fail(`${label}: (q10) odwrocie karty ${i + 1}: tekst ${back.font}px < 16px.`);
+          if (back.overflow > 1) fail(`${label}: (q10) odwrocie karty ${i + 1}: tekst nie mieści się (${back.overflow} px).`);
+        }
+        if (c.next.disabled) fail(`${label}: (q10) po obróceniu wszystkich kart „Dalej” nieaktywne.`);
+        if (c.pageScroll.some((v) => v > 1)) fail(`${label}: (q10) przewija się strona (${c.pageScroll}).`);
+        if (errors.length > 0) fail(`${label}: (q10) błędy: ${errors.join(' | ')}`);
+        await shot(page, `${viewport.name}-karty-obracane`);
+        step(`${label}: (q10) 4 karty w obszarze bloku${wideArea ? ' w jednym rzędzie' : ''}, podpis i odwrocie ≥ 16 px, tekst w całości, „Dalej” po wszystkich`, true);
+      }
       await context.close();
     }
   }

@@ -17,6 +17,7 @@ import { useOverlayLayer } from '../player/overlay-stack';
 import ScenePanContainer from '../player/ScenePanContainer';
 import { vibrate } from '@/lib/vibrate';
 import ExploreFooter from './ExploreFooter';
+import FlipCardsBlock from './FlipCardsBlock';
 import PopupsEasterEgg, { type PopupsHandle } from './PopupsEasterEgg';
 import BrowserWindow, { FakeLoginPage } from './BrowserWindow';
 
@@ -119,7 +120,12 @@ function cameraTransition(reducedMotion: boolean, phase: Phase | null): string |
 // przyciemnionym pulpitem (max 94% sceny), okienka easter egga bez przyciemnienia. Drzwi (action:'next') - bez
 // zoomu, klik (gdy wymagane pokryte) to przejście dalej - zapis bloku od razu, jak „Dalej” w dolnym pasku (D-129, zmiana D-106). reduced-motion: bez ruchu kamery, grafika od razu. A11y: role=dialog, aria-label = nazwa przedmiotu,
 // focus trap w nakładce, po zamknięciu fokus wraca na przedmiot.
-export default function SceneHotspotsBlock({
+// Tryb kart obracanych (`presentation: 'flipCards'`, D-209) - osobny widok (FlipCardsBlock), ten sam stan bloku i te same zdarzenia.
+export default function SceneHotspotsBlock(props: Parameters<typeof SceneView>[0]) {
+  return props.block.presentation === 'flipCards' ? <FlipCardsBlock {...props} /> : <SceneView {...props} />;
+}
+
+function SceneView({
   block,
   contentBase,
   onSubmit,

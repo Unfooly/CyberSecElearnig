@@ -251,11 +251,19 @@ const hotspotsSchema = z
             // D-178 (addytywnie): miejsce już obejrzane w poprzednim przejściu tej samej sceny (scena powtarzana jak na makiecie: komputer
             // ✓, teraz telefon) - znak ✓, nieklikalne, nie liczy się do wymaganych. Tylko bez required/evidence/note/action/media (semantics.ts).
             done: z.boolean().optional(),
+            // D-209 (addytywnie): ilustracja na przodzie karty w trybie `presentation: 'flipCards'` (tylko tam, semantics.ts).
+            cardImage: limage().optional(),
           })
           .strict(),
       )
       .min(1)
       .max(20),
+    // D-209 (addytywnie, uwaga właściciela 2026-11-23 do modułu 4: „po kliknięciu powinny się obrócić o 180 stopni i tekst powinien być
+    // na odwrocie”, jak na nagraniu „Ryzyko dla organizacji”): 'flipCards' - odtwarzacz pokazuje przedmioty jako duże karty (przód:
+    // `cardImage`, podpis `label` pod kartą; klik obraca kartę i pokazuje `content` na odwrocie) zamiast grafiki `image` z prostokątami.
+    // Stan bloku, dowody i wymagalność bez zmian (te same id, `visited`/`noted`) - serwer niczego nie rozróżnia. `image` zostaje (wymagane
+    // pole, opis `imageAlt`; starszy odtwarzacz pokaże scenę). Domyślnie 'scene'.
+    presentation: z.enum(['scene', 'flipCards']).optional(),
     // PRZESTARZAŁE od schemaVersion 3 (zastąpione `hotspots[].required`); nadal działa. Domyślnie wszystkie. Tylko hotspoty
     // NAJWYŻSZEGO poziomu (zagnieżdżona scena jest nowsza niż ta lista, więc nigdy jej nie dotyczy).
     requiredHotspots: z.array(idSchema).max(20).optional(),
@@ -1249,6 +1257,9 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
     [
       'image',
       'imageAlt',
+      // D-209: tryb kart obracanych i ilustracja przodu karty - wygląd, publiczne (treść odwrocia to `content`, jak w zwykłej karcie).
+      'presentation',
+      'hotspots[].cardImage',
       'hotspots[].id',
       'hotspots[].label',
       'hotspots[].x',

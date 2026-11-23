@@ -347,6 +347,8 @@ export interface ContentBlock {
   imagePortrait?: string;
   portraitHotspots?: { id: string; x: number; y: number; width: number; height: number }[];
   hotspots?: SceneHotspot[];
+  /** D-209: 'flipCards' - przedmioty jako karty obracane (przód `cardImage`, odwrocie `content`) zamiast sceny `image`. */
+  presentation?: 'scene' | 'flipCards';
   requiredHotspots?: string[];
   // CALL_RECORDING (D-115): segmenty rozmowy (bez flag - te są sekretem, rozstrzygnięcie w ResultDetail.flags po ocenie).
   segments?: RecordingSegment[];
@@ -542,6 +544,8 @@ export interface SceneHotspot {
   required?: boolean;
   /** D-178: miejsce obejrzane w poprzednim przejściu sceny - znak ✓, nieklikalne. */
   done?: boolean;
+  /** D-209: ilustracja przodu karty w trybie `presentation: 'flipCards'`. */
+  cardImage?: string;
 }
 
 export interface DialogueQuestion {

@@ -47,6 +47,9 @@ describe('moduł 4 „Na skróty” - treść', () => {
     expect(effects.every((h) => h.required && h.evidence)).toBe(true);
     // Karty skutków - walidator trybu prostego ich nie limituje, a mają się zmieścić na telefonie.
     for (const card of effects) expect(card.content.length).toBeLessThanOrEqual(140);
+    // Karty obracane z ilustracjami (D-209, uwaga właściciela 2026-11-23) - opublikowane WebP.
+    expect(block('skutki').presentation).toBe('flipCards');
+    for (const card of effects) expect((card as { cardImage?: string }).cardImage).toMatch(/^assets\/na-skroty\/images\/ryzyko-[a-z]+\.[0-9a-f]{8}\.webp$/);
   });
 
   it('każdy ekran z tekstem i każde pytanie ma ilustrację (opublikowany WebP) z opisem', () => {

@@ -867,6 +867,17 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja właściciela - (1) tytuły z `course_versions.title` w języku gracza i plakietka na karcie kursu; (2) lekcja per język
   szablonu/kampanii; (3) czy i kiedy tłumaczyć interfejs (CLAUDE.md: bez pełnego frameworka i18n w MVP).
 
+### B-187 Karty obracane (D-209) - pseudo-lokalizacja odwrocia i drobne uwagi z review
+- Etykiety: `P2`, `mod:odtwarzacz`, `i18n`, `test` · Źródło: code review D-209
+- Opis: (1) **przed wersją EN modułu 4:** layout-check q10 mierzy odwrocie tylko po polsku, a sekcja `pseudo` - wyłącznie nieobrócone
+  karty. Najdłuższe odwrocie (133 znaki) mieści się na 360×740 dopiero po zagęszczeniu, więc tekst `xx` (+35%) prawie na pewno się
+  przepełni (przewija się wtedy wewnątrz przycisku - klawiatura nie przewinie). Dodać q10 w wariancie `xx` (390×844, 360×740) i
+  rozwiązanie (np. mniejsza ilustracja / odwrocie na całą wysokość / krótsze teksty EN). (2) Błąd wczytania `cardImage` - dziś ciemny przód
+  z ikoną obrotu (podpis widoczny); rozważyć `onError` jak w scenie. (3) Raz obejrzeć obrót na iPhonie (WebKit, `backface-visibility` przy
+  `overflow-y: auto` i `border-radius`). (4) Reguła trybu prostego „cel ≥ 44×44” liczy się na prostokątach `x/y/width/height`, które w trybie
+  kart służą tylko starszemu odtwarzaczowi - można ją pominąć dla `flipCards`.
+- Akceptacja: q10 `xx` zielony na telefonie albo świadoma decyzja (wpis tutaj); pozostałe punkty zrobione albo odrzucone.
+
 ### B-186 Scena ze zdjęciami (D-208) - m9 i dopasowanie tytułów
 - Etykiety: `P3`, `test`, `content` · Źródło: code review D-208
 - Opis: (1) `layout-check` m9 mierzy tekst dowodów tylko w SVG z `data-evidence`; scena `skutki` modułu 4 to od D-208 WebP z

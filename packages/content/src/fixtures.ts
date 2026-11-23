@@ -724,6 +724,9 @@ export function leakProbeBlocks(): Record<BlockType, Record<string, unknown>> {
   // Zdjęcie przypięte do kartki teczki (D-191) - publiczne; tylko tutaj.
   Object.assign((blocks.TABS.tabs as Record<string, unknown>[])[0], { photo: 'images/ofiara.webp', photoAlt: 'Zdjęcie legitymacyjne ofiary.' });
   blocks.EMAIL_ANALYSIS.frame = 'monitor';
+  // Karty obracane (D-209) - tryb i ilustracja przodu publiczne; w module wykluczają się z mediami, więc tylko tutaj (fullModule() bez zmian).
+  blocks.SCENE_HOTSPOTS.presentation = 'flipCards';
+  (blocks.SCENE_HOTSPOTS.hotspots as Record<string, unknown>[])[0].cardImage = 'images/karta.webp';
   // Tablica z notatkami (D-182) - publiczna; tylko tutaj (fullModule() bez zmian, reguła 9).
   Object.assign(blocks.ORDERING, {
     look: 'notes',

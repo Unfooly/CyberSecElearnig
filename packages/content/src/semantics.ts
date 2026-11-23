@@ -685,6 +685,22 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
           return badge ? [badge.id] : [];
         }),
       );
+      // Karty obracane (D-209): 2-6 kart, każda z ilustracją przodu i tekstem odwrocia; bez drzwi, mediów, ✓ i easter eggów (tylko obrót).
+      // `cardImage` wyłącznie w tym trybie - w scenie byłby martwym polem.
+      if (block.presentation === 'flipCards') {
+        if (block.hotspots.length < 2 || block.hotspots.length > 6) errors.push(`presentation: flipCards wymaga 2-6 kart (jest ${block.hotspots.length})`);
+        block.hotspots.forEach((h, i) => {
+          if (h.cardImage === undefined) errors.push(`hotspots[${i}] (${h.id}): flipCards wymaga cardImage`);
+          if (h.content === undefined) errors.push(`hotspots[${i}] (${h.id}): flipCards wymaga content (odwrocie karty)`);
+          if (h.action !== undefined || h.media !== undefined || h.done !== undefined) {
+            errors.push(`hotspots[${i}] (${h.id}): flipCards nie łączy się z action, media ani done`);
+          }
+        });
+      } else {
+        block.hotspots.forEach((h, i) => {
+          if (h.cardImage !== undefined) errors.push(`hotspots[${i}] (${h.id}): cardImage tylko z presentation: flipCards`);
+        });
+      }
       block.hotspots.forEach((h, i) => {
         if (h.x + h.width > 100 || h.y + h.height > 100) errors.push(`hotspots[${i}]: obszar wychodzi poza obraz`);
         if (h.done === true) {

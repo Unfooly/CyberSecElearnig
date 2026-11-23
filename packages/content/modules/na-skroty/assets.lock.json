@@ -52,6 +52,26 @@
       "hash": "17e7054f",
       "key": "assets/na-skroty/scenes/pl/tablica-skutki-pion.17e7054f.webp"
     },
+    "skutki#hotspots.0.cardImage": {
+      "original": "images/ryzyko-dane.webp",
+      "hash": "623c5d92",
+      "key": "assets/na-skroty/images/ryzyko-dane.623c5d92.webp"
+    },
+    "skutki#hotspots.1.cardImage": {
+      "original": "images/ryzyko-wirus.webp",
+      "hash": "4c3b0d0d",
+      "key": "assets/na-skroty/images/ryzyko-wirus.4c3b0d0d.webp"
+    },
+    "skutki#hotspots.2.cardImage": {
+      "original": "images/ryzyko-prawo.webp",
+      "hash": "25a84ed6",
+      "key": "assets/na-skroty/images/ryzyko-prawo.25a84ed6.webp"
+    },
+    "skutki#hotspots.3.cardImage": {
+      "original": "images/ryzyko-pliki.webp",
+      "hash": "8fa61bfc",
+      "key": "assets/na-skroty/images/ryzyko-pliki.8fa61bfc.webp"
+    },
     "pracownik#illustration.image": {
       "original": "images/pracownik.webp",
       "hash": "7518ff0b",

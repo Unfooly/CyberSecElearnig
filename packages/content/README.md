@@ -96,6 +96,10 @@ jeden). Pełny wzór każdego typu: `src/fixtures.ts` (`fullBlocks()`).
   skryptu TTS (nie idzie do klienta). Mapowanie rola -> voiceId: `scripts/content/voices.json` (`docs/content-pipeline.md`, „Głosy”).
 - Media obrazu hotspotu (`kind: "image"`): opcjonalne `imagePortrait` (D-104) - wariant dla telefonu w pionie (np. okno maila z dużym,
   zawijanym tekstem; kompozytor `mailWindowPortrait`/`browserHistoryPortrait` + `crop-zooms`), wspólne `alt`.
+- Karty obracane (D-209): `SCENE_HOTSPOTS` z `presentation: "flipCards"` - odtwarzacz pokazuje przedmioty jako duże karty (przód:
+  `hotspots[].cardImage`, podpis `label` pod kartą; klik obraca kartę o 180° i pokazuje `content` na odwrocie) zamiast sceny `image`.
+  2-6 kart, każda z `cardImage` i `content`, bez `action`/`media`/`done`; `cardImage` tylko w tym trybie. Stan bloku, dowody i
+  wymagalność jak w scenie; `image`/`imageAlt` zostają (starszy odtwarzacz). Moduł 4, blok `skutki`.
 - Scena `SCENE_HOTSPOTS` w pionie (D-116): opcjonalne `imagePortrait` + `portraitHotspots[] { id, x, y, width, height }` (zawsze razem,
   te same id co `hotspots`, % grafiki pionowej) - na telefonie w pionie cała grafika pionowa bez panoramy (dowolne proporcje, „contain”).
   Źródło prostokątów: `*-pion.hotspots.json` kompozytora. Scena zagnieżdżona (`media.kind: "scene"`) może mieć `screen { x, y, w, h }`

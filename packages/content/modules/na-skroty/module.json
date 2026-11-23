@@ -73,7 +73,8 @@
       "id": "skutki",
       "type": "SCENE_HOTSPOTS",
       "title": "Co może pójść nie tak",
-      "tip": "Otwórz każdą z czterech kart.",
+      "tip": "Odwróć każdą z czterech kart.",
+      "presentation": "flipCards",
       "narration": {
         "voice": "komisarz",
         "text": "Każdy taki skrót może kosztować więcej, niż daje. Sprawdź wszystkie cztery karty.",
@@ -127,6 +128,7 @@
         {
           "id": "dane",
           "label": "Dane firmy u obcej firmy",
+          "cardImage": "assets/na-skroty/images/ryzyko-dane.623c5d92.webp",
           "x": 5,
           "y": 8,
           "width": 43.9,
@@ -142,6 +144,7 @@
         {
           "id": "wirus",
           "label": "Wirusy w pakiecie",
+          "cardImage": "assets/na-skroty/images/ryzyko-wirus.4c3b0d0d.webp",
           "x": 51.1,
           "y": 8,
           "width": 43.9,
@@ -157,6 +160,7 @@
         {
           "id": "prawo",
           "label": "Problemy prawne",
+          "cardImage": "assets/na-skroty/images/ryzyko-prawo.25a84ed6.webp",
           "x": 5,
           "y": 51.8,
           "width": 43.9,
@@ -172,6 +176,7 @@
         {
           "id": "pliki",
           "label": "Utrata plików",
+          "cardImage": "assets/na-skroty/images/ryzyko-pliki.8fa61bfc.webp",
           "x": 51.1,
           "y": 51.8,
           "width": 43.9,

@@ -128,7 +128,9 @@ Wszystkie ze `strings` (`pl`), tekst ≥ 16 px na 390 px (`minTextPx: 16`), teks
 scena zielona w `xx` (pseudo-lokalizacja). Arkusze i zrzuty (pl-PL) do `docs/brand/screens/m4/` - przegląd właściciela przed merge.
 
 > Stan 2026-11-23: `odprawa` i `biurko-bartka` zastąpione grafikami według nagrania (D-201), źródła usunięte w B-183; `tablica-skutki`
-> to od D-208 cztery karty z ilustracjami Dreaminy (WebP, `photoBoard` + `photo-fill.ts`), tytuły „Wirusy w pakiecie” i „Problemy prawne”.
+> to od D-208 cztery karty z ilustracjami Dreaminy (WebP, `photoBoard` + `photo-fill.ts`), tytuły „Wirusy w pakiecie” i „Problemy prawne”;
+> od D-209 odtwarzacz pokazuje je jako karty obracane (`presentation: 'flipCards'`, ilustracje `images/ryzyko-*.webp`, tekst na odwrocie),
+> a tablica WebP zostaje tylko dla starszego odtwarzacza.
 
 | grafika | wariant pionowy | tekst wpalony |
 |---|---|---|

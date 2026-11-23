@@ -39,8 +39,6 @@ const LIGHT_FOCUS =
 const ZOOM_IN_MS = 450;
 const ZOOM_OUT_MS = 350;
 const EASE_OUT_SOFT = 'cubic-bezier(.2,.8,.2,1)';
-const TOAST_MS = 2500;
-export const NOT_EVIDENCE_TOAST = 'To nie jest dowód w tej sprawie.';
 /** Pudła na scenie (klik poza przedmiotem), po których przedmioty dostają ramki podpowiedzi (D-154) - jak „podpowiedź po 2 błędach”. */
 export const MISSES_TO_REVEAL = 2;
 export const REVEAL_HINT = 'Miejsca, którym warto się przyjrzeć, są teraz zaznaczone.';
@@ -177,8 +175,6 @@ function SceneView({
   const [camera, setCamera] = useState<CameraStyle>(null);
   const [nestedActiveId, setNestedActiveId] = useState<string | null>(null);
   const [nestedPhase, setNestedPhase] = useState<Phase | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
-  const [shake, setShake] = useState(0);
   const [transcriptOpen, setTranscriptOpen] = useState(false);
   const viewRef = useRef<HTMLDivElement | null>(null);
   const boxRef = useRef<HTMLDivElement | null>(null);
@@ -362,8 +358,6 @@ function SceneView({
   function open(hotspot: SceneHotspot, trigger: HTMLButtonElement) {
     generation.current += 1;
     vibrate(10);
-    setToast(null);
-    setShake(0);
     triggerRef.current = trigger;
     setActiveId(hotspot.id);
     setNestedActiveId(null);
@@ -397,7 +391,6 @@ function SceneView({
       setPhase(null);
       setNestedActiveId(null);
       setNestedPhase(null);
-      setToast(null);
       trigger?.focus();
     };
     setCamera(null);
@@ -417,8 +410,6 @@ function SceneView({
     generation.current += 1;
     returningFocus.current = false;
     vibrate(10);
-    setToast(null);
-    setShake(0);
     nestedTriggerRef.current = trigger;
     setNestedActiveId(hotspot.id);
     if (hotspot.media?.kind !== 'popups') markVisited(hotspot.id);
@@ -436,7 +427,6 @@ function SceneView({
     returningFocus.current = true;
     setNestedActiveId(null);
     setNestedPhase(null);
-    setToast(null);
     trigger?.focus();
   }
 
@@ -473,12 +463,8 @@ function SceneView({
 
   function take(hotspot: AnyHotspot, from?: Element) {
     if (review || noted.includes(hotspot.id) || takenRef.current.has(hotspot.id) || !block.id) return;
-    if (!hotspot.evidence || !hotspot.note) {
-      setShake((n) => n + 1);
-      setToast(NOT_EVIDENCE_TOAST);
-      later(TOAST_MS, () => setToast((t) => (t === NOT_EVIDENCE_TOAST ? null : t)));
-      return;
-    }
+    // Zbieranie tylko przy dowodzie z notatką (ZoomContent woła `take` wyłącznie wtedy, D-187) - bez komunikatu „to nie dowód” (B-176).
+    if (!hotspot.evidence || !hotspot.note) return;
     // Zbieranie przy otwarciu (D-187) idzie z efektu - StrictMode (dev) odpala go dwa razy z tym samym domknięciem, więc blokada
     // synchroniczna w refie i bez duplikatów w `noted` (API odrzuca duplikat błędem 400).
     takenRef.current.add(hotspot.id);
@@ -684,16 +670,6 @@ function SceneView({
                 reducedMotion ? '' : 'transition-[background-color,backdrop-filter] duration-300'
               } ${phase === 'out' || (!nestedScene && active.media?.kind === 'popups') ? 'bg-transparent' : ZOOM_DIM}`}
             >
-              {/* Stały region live (czytniki ogłaszają zmianę treści, nie region wstawiony razem z nią); widoczny tylko z tekstem. */}
-              <p
-                role="status"
-                className={
-                  toast ? 'absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded-btn bg-surface px-3 py-2 text-sm font-semibold text-ink shadow-card' : 'sr-only'
-                }
-              >
-                {toast}
-              </p>
-
               {nestedScene ? (
                 <>
                   {/* Przy otwartym przedmiocie pulpitu "Wróć" znika - jedynym wyjściem jest wtedy Odłóż/Esc/tło (jeden poziom naraz). */}
@@ -769,7 +745,6 @@ function SceneView({
                           reducedMotion={reducedMotion}
                           noted={noted.includes(activeInner.id)}
                           review={review}
-                          shake={shake}
                           transcriptOpen={transcriptOpen}
                           onToggleTranscript={() => setTranscriptOpen((v) => !v)}
                           onTake={(from) => take(activeInner, from)}
@@ -800,7 +775,6 @@ function SceneView({
                   reducedMotion={reducedMotion}
                   noted={noted.includes(active.id)}
                   review={review}
-                  shake={shake}
                   transcriptOpen={transcriptOpen}
                   onToggleTranscript={() => setTranscriptOpen((v) => !v)}
                   onTake={(from) => take(active, from)}
@@ -825,7 +799,6 @@ function ZoomContent({
   reducedMotion,
   noted,
   review,
-  shake,
   transcriptOpen,
   onToggleTranscript,
   onTake,
@@ -840,7 +813,6 @@ function ZoomContent({
   reducedMotion: boolean;
   noted: boolean;
   review: boolean;
-  shake: number;
   transcriptOpen: boolean;
   onToggleTranscript: () => void;
   onTake: (from: HTMLElement) => void;
@@ -851,8 +823,7 @@ function ZoomContent({
 }) {
   const fade = `${reducedMotion ? '' : 'transition-opacity duration-200'} ${visible ? 'opacity-100' : 'opacity-0'}`;
   // Bez „Zabierz/Odłóż” (D-187, uwaga właściciela 2026-11-20: „wywalamy przyciski zabierz/odłóż”): dowód trafia do notatnika sam, gdy
-  // zbliżenie się otworzy (nazwa leci z grafiki do Notatnika); zamyka ✕ w rogu, klik w tło albo Esc. `shake` zostaje nieużywany.
-  void shake;
+  // zbliżenie się otworzy (nazwa leci z grafiki do Notatnika); zamyka ✕ w rogu, klik w tło albo Esc.
   const graphicRef = useRef<HTMLDivElement | null>(null);
   // Gazeta bez dowodu sięga do samego dołu obszaru (D-195); z dowodem zostaje pasek „W notatniku” pod stroną, więc układ jak dotąd.
   const flush = hotspot.media?.kind === 'document' && hotspot.media.look === 'newspaper' && !noted;

@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import ExploratoryBlock from './ExploratoryBlock';
-import { computeHotspotCentroid, hotspotStackZIndex, NOT_EVIDENCE_TOAST, REVEAL_HINT } from './SceneHotspotsBlock';
+import { computeHotspotCentroid, hotspotStackZIndex, REVEAL_HINT } from './SceneHotspotsBlock';
 import { typingDelayMs } from './DialogueBlock';
 import { NotesProvider, NotesPanel, useNotes } from '../player/notes';
 import { EvidenceCounter, EvidenceProvider, useEvidence } from '../player/evidence';
@@ -465,7 +465,8 @@ describe('SCENE_HOTSPOTS: punkty, zbliżenie i dowody', () => {
     setup(scene, { summary });
     pick('Drzwi');
     expect(within(dialog()).queryByText('W notatniku')).toBeNull();
-    expect(screen.queryByText(NOT_EVIDENCE_TOAST)).toBeNull();
+    // Strażnik regresji: komunikat „to nie dowód” usunięty celowo (D-187, B-176).
+    expect(screen.queryByText('To nie jest dowód w tej sprawie.')).toBeNull();
     expect(screen.getByTestId('notes')).toHaveTextContent('');
     expect(screen.getByTestId('evidence-counter')).toHaveTextContent('Dowody 0/2');
   });

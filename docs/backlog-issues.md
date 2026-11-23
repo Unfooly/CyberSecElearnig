@@ -873,6 +873,8 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   dostać „Sprawa bez skazy” / „Najpierw pytam IT” (100%) i bonus XP za 100% po powtórce. Do decyzji: (a) zostawić; (b) 100% tylko przy
   zaliczeniu za pierwszym razem (`progress.quiz.attempts === 1`); (c) przy powtórce inna kolejność odpowiedzi albo pula pytań.
 - Akceptacja: decyzja właściciela i - przy (b)/(c) - zmiana z testem.
+- **Rozstrzygnięte 2026-11-23 (właściciel): (a) „z ostatniego”** - wynik i osiągnięcia za 100% z ostatniego, zaliczonego podejścia, bez
+  zmian w kodzie. Otwarte zostaje tylko pokazanie liczby podejść w raportach admina (osobne zgłoszenie, gdy będzie potrzeba).
 
 ### B-184 Moduł 3 według nagrania (D-203) - lektor i sprzątanie
 - Etykiety: `P2`, `mod:kursy`, `content` · Źródło: decyzja właściciela 2026-11-22 (D-203)

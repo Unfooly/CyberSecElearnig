@@ -910,6 +910,9 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   w `globals.css` obok `.monitor-stage*`); (2) reguła `.monitor-stage-screen > div { gap: 8px }` (zwarte odstępy na telefonie) przy
   ilustracji trafia w opakowanie `illustrated`, a pytanie i odpowiedzi dostają 12 px - rozszerzyć selektor o `[data-testid=illustrated] > div > div`.
 - Akceptacja: oba punkty poprawione z zielonym pełnym layout-check (sekcja `monitor` z q7) albo świadomie odrzucone (wpis tutaj).
+- **Zrobione 2026-11-23 (`fix/182-ilustracja-monitor`):** (1) klasa `.monitor-illustrated` w `globals.css` z kolumnami i wysokością
+  ilustracji po `@container monitor` (ten sam próg co monitor); przy 844x390 karta w ramce ma ilustrację nad pytaniem; (2) selektor zwartych
+  odstępów obejmuje blok pytania pod ilustracją. layout-check q7 sprawdza oba punkty (obok siebie / pod spodem, odstęp 8 px).
 
 ### B-181 Gazeta do dołu, ilustracje w teczkach, okno pytania (D-195..D-197) - uwagi z review
 - Etykiety: `P2`, `mod:odtwarzacz`, `i18n`, `test` · Źródło: code review i security review D-195/D-196/D-197

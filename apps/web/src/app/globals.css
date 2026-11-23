@@ -1116,10 +1116,33 @@
   background: #fff;
   padding: 18px 24px;
 }
+/* Ilustracja przy pytaniu na ekranie monitora (D-200, D-206, B-182): układ po kontenerze `monitor` - tym samym progiem co sam monitor
+   (szeroko: ekran monitora i dwie kolumny; wąsko albo nisko: karta w ramce i ilustracja nad pytaniem), nie po szerokości okna. Kolumny
+   do góry (nie środka): przy długim pytaniu kolumna treści jest wyższa niż ekran i wyśrodkowana ilustracja lądowała poza widocznym
+   ekranem (layout-check q7). Chowanie ilustracji na niskim telefonie w pionie zostaje w `Illustrated.tsx` (wysokość OKNA, q7 `shortPhone`).
+   Odstęp w karcie (8 px) daje reguła zwartych odstępów niżej (`.monitor-stage-screen > div`). */
+.monitor-illustrated {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 8px;
+}
+.monitor-illustrated-img {
+  max-height: 20cqh;
+}
 /* Analiza maila (D-188): odpowiedzi do zaznaczenia z prawej strony maila - tylko w monitorze (`frame: 'monitor'`), gdy kontener
    `monitor` jest szeroki (ten sam próg co układ monitora). Wąski monitor i mail poza monitorem (podgląd „Wstecz”, panel ok. 720 px - za
    wąski na dwie kolumny; uwaga z code review): kolejność z DOM (pytanie, mail, lista pod nim). */
 @container monitor (min-width: 640px) and (min-height: 420px) {
+  .monitor-illustrated {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    align-items: start;
+    gap: 24px;
+  }
+  .monitor-illustrated-img {
+    max-height: min(52cqh, 360px);
+  }
   .monitor-stage-screen .email-split {
     display: grid;
     grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
@@ -1192,7 +1215,9 @@
     padding: 10px 8px;
   }
   /* Karta na telefonie zwarta (pytanie i odpowiedzi mają się zmieścić bez przewijania, 360×740) - odstępy, nie rozmiar tekstu (≥ 16 px). */
-  .monitor-stage-screen > div {
+  /* Z ilustracją (B-182) blok pytania jest głębiej: ekran > `illustrated` > kolumna treści > blok. */
+  .monitor-stage-screen > div,
+  .monitor-stage-screen > [data-testid='illustrated'] > div > div {
     gap: 8px;
   }
   /* radiogroup - pojedynczy wybór od D-204 (przyciski radiowe zamiast zwykłych przycisków). */

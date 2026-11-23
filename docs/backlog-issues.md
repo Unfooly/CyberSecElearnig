@@ -867,6 +867,15 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja właściciela - (1) tytuły z `course_versions.title` w języku gracza i plakietka na karcie kursu; (2) lekcja per język
   szablonu/kampanii; (3) czy i kiedy tłumaczyć interfejs (CLAUDE.md: bez pełnego frameworka i18n w MVP).
 
+### B-186 Scena ze zdjęciami (D-208) - m9 i dopasowanie tytułów
+- Etykiety: `P3`, `test`, `content` · Źródło: code review D-208
+- Opis: (1) `layout-check` m9 mierzy tekst dowodów tylko w SVG z `data-evidence`; scena `skutki` modułu 4 to od D-208 WebP z
+  `photo-fill.ts`, więc jej klucze (`dane`, `wirus`, `prawo`, `pliki`) wypadają z m9 bez śladu w raporcie. Minimum 16 px pilnuje kompozytor
+  na SVG tej samej sceny (te same proporcje). Lepiej: dla WebP z przepisem czytać `data-evidence` z SVG przepisu i mierzyć na WebP w
+  przeglądarce. (2) Pozycje tytułów (`tekst-*` w `examples/na-skroty/tablica-skutki*.json`) są przepisane ręcznie ze slotów
+  `slot-tytul-N` klocka `photoBoard` - nic tego nie pilnuje (jak w innych scenach modułów 3-4).
+- Akceptacja: m9 obejmuje sceny WebP z przepisem albo świadoma rezygnacja (wpis tutaj); test zgodności `tekst-*` ze slotami.
+
 ### B-185 Quiz - osiągnięcia za 100% po „Powtórz quiz” (D-207)
 - Etykiety: `P3`, `mod:grywalizacja`, `decyzja` · Źródło: D-204/D-207 (znane ograniczenie)
 - Opis: po niezaliczonym podejściu gracz widział klucz pytań, a wynik kursu liczy się z ostatniego, zaliczonego podejścia - może więc

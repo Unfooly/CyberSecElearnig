@@ -1,0 +1,22 @@
+{
+  "scene": "scenes/examples/na-skroty/tablica-skutki.json",
+  "svg": "../../packages/content/modules/na-skroty/assets/scenes/pl/tablica-skutki.svg",
+  "out": "../../packages/content/modules/na-skroty/assets/scenes/pl/tablica-skutki.webp",
+  "photos": [
+    "scenes/photos/na-skroty/ryzyko-dane.webp",
+    "scenes/photos/na-skroty/ryzyko-wirus.webp",
+    "scenes/photos/na-skroty/ryzyko-prawo.webp",
+    "scenes/photos/na-skroty/ryzyko-pliki.webp"
+  ],
+  "scale": 1.5,
+  "sha256": {
+    "svg": "a5d6df29339219e642e477eb0d6af7b12193052b6249417cad614e56aa9d50de",
+    "photos": [
+      "623c5d92a6819db78c1e2f5e4e6465992862085211811fe5455c8e8ae3727c03",
+      "4c3b0d0d498fb7b6ed335646162459cb87d5b111b2ba627d015fc86b446a39ed",
+      "25a84ed69034475abb4ad1adae60a351cb0222432a69f3367159907685029e58",
+      "8fa61bfceafeea30424705b1027bddfda5cf3f3cced6eb291bc1a71a38043b4f"
+    ],
+    "out": "23ec7e32b01ca92303c37f4b61890b38a9bdf758531f7903ed4241f7ad998075"
+  }
+}

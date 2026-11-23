@@ -1,0 +1,22 @@
+{
+  "scene": "scenes/examples/na-skroty/tablica-skutki-pion.json",
+  "svg": "../../packages/content/modules/na-skroty/assets/scenes/pl/tablica-skutki-pion.svg",
+  "out": "../../packages/content/modules/na-skroty/assets/scenes/pl/tablica-skutki-pion.webp",
+  "photos": [
+    "scenes/photos/na-skroty/ryzyko-dane.webp",
+    "scenes/photos/na-skroty/ryzyko-wirus.webp",
+    "scenes/photos/na-skroty/ryzyko-prawo.webp",
+    "scenes/photos/na-skroty/ryzyko-pliki.webp"
+  ],
+  "scale": 1.5,
+  "sha256": {
+    "svg": "ac60a451532198ac7274defd07114749eb383f6eef3d7be40b751a48f2707cc4",
+    "photos": [
+      "623c5d92a6819db78c1e2f5e4e6465992862085211811fe5455c8e8ae3727c03",
+      "4c3b0d0d498fb7b6ed335646162459cb87d5b111b2ba627d015fc86b446a39ed",
+      "25a84ed69034475abb4ad1adae60a351cb0222432a69f3367159907685029e58",
+      "8fa61bfceafeea30424705b1027bddfda5cf3f3cced6eb291bc1a71a38043b4f"
+    ],
+    "out": "17e7054f7d1c10b6fc1336fefb76ac5bcf3e9037a5bf53dc814a02a600d91e46"
+  }
+}

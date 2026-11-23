@@ -257,7 +257,18 @@ Cel dotykowy mniejszego rysunku (ikona programu, pendrive) to część `cel` z p
 | `cloudWindow` | okno prywatnego dysku w chmurze z folderem: `w`, `h`, `folder`, `bar` | `slot-tytul`, `slot-folder` |
 | `appIcon` | ikona pobranego programu (bez liter): `size`, `target` | `cel` |
 | `usbStick` | prywatny pendrive: `len`, `flip`, `target` | `cel` |
-| `effectsBoard` | tablica korkowa z 4 kartami skutków: `w`, `h`, `cols`, `gap`, `iconH` | `karta-1`…`karta-4`, `slot-tytul-1`…`slot-tytul-4` |
+| `photoBoard` | (D-208) tablica 4 kart skutków ze zdjęciami, ciemna jak grafiki Dreaminy: `w`, `h`, `cols`, `gap`, `photo: left\|top` | `karta-1`…`karta-4`, `foto-1`…`foto-4` (kwadratowe okno zdjęcia), `slot-tytul-1`…`slot-tytul-4` |
+
+**Scena ze zdjęciami (D-208, `photo-fill.ts`).** SVG sceny nie osadza obrazów (bez `href` - `odprawa.test.ts`), więc układ i tekst robi
+kompozytor (tekst jako krzywe, `minTextPx`, pseudo-lokalizacja, hotspoty), a zdjęcia wkleja w okna `foto-*` osobny krok, który zapisuje
+gotową scenę jako WebP obok SVG (skala 1,5: 2400×1500 i 1350×2400). Zdjęcia źródłowe w `scenes/photos/<cel>/` - PNG z Dreaminy
+przycięte o 6,5% z góry (etykieta „AI”) i 9% z dołu (znak wodny), szerokość 1280, WebP q82. **Przepis** sceny:
+`scenes/photos/<cel>/<scena>.json` (scena, SVG, wynik, zdjęcia w kolejności `foto-1`…`foto-4`, skala); `photo-fill` dopisuje do niego
+skróty SHA-256 wejść i wyniku, a `photo-fill.test.ts` pada, gdy SVG, zdjęcie albo WebP zmieni się bez ponownego uruchomienia.
+Kolejność (z `scripts/content`): build SVG → `npx tsx scenes/photo-fill.ts scenes/photos/na-skroty/tablica-skutki.json` (i `-pion`) →
+`module.json` wskazuje WebP → publikacja `--assets`. Pozycje hotspotów jak dla SVG (`*.hotspots.json`; pionowe - ręcznie w
+`portraitHotspots`). Pseudo-lokalizację i minimum 16 px sprawdza kompozytor na SVG; `layout-check` (m9) WebP nie mierzy (B-186). Przy wersji
+EN - przepis i WebP per język.
 
 Raport pionowy modułu 4 jest wyższy niż 9:16 (900×1800, odtwarzacz przewija go w pionie - D-152): `reportPortrait` z `tallStats`,
 `signatureAbove`, `rulesExtra` (wyższa sekcja zasad), `pageExtra` (dłuższa strona u dołu) i `slots` (liścik i pieczęć pod podpisem), a

@@ -43,14 +43,14 @@
       "key": "assets/na-skroty/images/shadow-it.7309f47f.webp"
     },
     "skutki#image": {
-      "original": "scenes/pl/tablica-skutki.svg",
-      "hash": "4d306a63",
-      "key": "assets/na-skroty/scenes/pl/tablica-skutki.4d306a63.svg"
+      "original": "scenes/pl/tablica-skutki.webp",
+      "hash": "23ec7e32",
+      "key": "assets/na-skroty/scenes/pl/tablica-skutki.23ec7e32.webp"
     },
     "skutki#imagePortrait": {
-      "original": "scenes/pl/tablica-skutki-pion.svg",
-      "hash": "901adff3",
-      "key": "assets/na-skroty/scenes/pl/tablica-skutki-pion.901adff3.svg"
+      "original": "scenes/pl/tablica-skutki-pion.webp",
+      "hash": "17e7054f",
+      "key": "assets/na-skroty/scenes/pl/tablica-skutki-pion.17e7054f.webp"
     },
     "pracownik#illustration.image": {
       "original": "images/pracownik.webp",

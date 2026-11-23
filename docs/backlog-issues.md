@@ -995,6 +995,9 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Opis: w `SceneHotspotsBlock.tsx` zostały nieużywane: stan i prop `shake` (`void shake` w ZoomContent), gałąź `NOT_EVIDENCE_TOAST` w
   `take` (nieosiągalna - zbieranie tylko dla evidence + note) i CSS `.scene-zoom-shake` w `globals.css`.
 - Akceptacja: usunięte, testy zielone.
+- **Zrobione 2026-11-23 (`refactor/176-martwy-kod-sceny`):** usunięte `shake`, komunikat „To nie jest dowód…” z regionem `role="status"`,
+  `TOAST_MS`, `NOT_EVIDENCE_TOAST` i klasa `.scene-zoom-shake` (klatki `scene-zoom-shake` zostają - używają ich inne animacje);
+  `take` bez dowodu po prostu nic nie robi. layout-check `hotspots,zoom-focus,easter,module`: 111 OK.
 
 ### B-175 Tablica śledcza (ORDERING) w niskim oknie desktopu - drobny tekst kart
 - Etykiety: `P3`, `mod:odtwarzacz` · Źródło: D-187 (layout-check `module`, okno 1366x650 z myszą)

@@ -1,4 +1,5 @@
 import { Prisma } from '@prisma/client';
+import { readQuizState, type QuizState } from './quiz';
 
 // Postęp przypisania (CourseAssignment.progress). Nowy format (v: 2) jest kluczowany id BLOKU, nie indeksem, więc przeżywa
 // zmiany kolejności między wersjami treści. Format sprzed silnika (klucz = indeks bloku) jest czytelny: przeliczamy go w
@@ -53,6 +54,8 @@ export interface ProgressV2 {
   blocks: Record<string, BlockEntry>;
   // Klucze notatek `<blockId>.<itemId>` (treść notatki rozwiązuje serwer z treści modułu - klient nigdy nie wysyła treści).
   notes: string[];
+  /** Quiz modułu w trybie prostym (D-207): podejścia i wynik ostatniego; brak - quizu jeszcze nie ukończono. */
+  quiz?: QuizState;
 }
 
 export function emptyProgress(): ProgressV2 {
@@ -95,7 +98,8 @@ export function readProgress(raw: Prisma.JsonValue | null | undefined): Progress
       }
     }
     const notes = Array.isArray(raw.notes) ? raw.notes.filter((n): n is string => typeof n === 'string') : [];
-    return { v: 2, blocks, notes };
+    const quiz = readQuizState(raw.quiz);
+    return { v: 2, blocks, notes, ...(quiz ? { quiz } : {}) };
   }
 
   const blocks: Record<string, BlockEntry> = {};

@@ -110,7 +110,9 @@ export default async function CoursePlayerPage({ params }: { params: { courseId:
         // Postęp w kluczu (D-142): po „Wstecz” w przeglądarce odtwarzacz wraca z drzewa w pamięci routera ze starym postępem i woła
         // router.refresh() - świeży currentBlockIndex/status z serwera przemontowuje odtwarzacz na właściwym bloku. W trakcie gry serwer
         // nie jest odświeżany (blok przesuwa stan klienta), więc klucz się wtedy nie zmienia.
-        key={`${course.assignmentId}-${course.locale ?? 'pl'}-${course.currentBlockIndex}-${course.status}`}
+        // Stan quizu w kluczu (D-207, code review): „Powtórz quiz” przy quizie z jednym pytaniem nie zmienia currentBlockIndex (ostatnie =
+        // pierwsze pytanie) - przed powtórką jest wynik, po niej brak, więc klucz i tak się zmienia i odtwarzacz wraca do pytania.
+        key={`${course.assignmentId}-${course.locale ?? 'pl'}-${course.currentBlockIndex}-${course.status}-${course.quiz?.result ? `q${course.quiz.result.attempts}${course.quiz.result.passed ? 'p' : 'f'}` : 'q'}`}
         courseId={params.courseId}
         initial={{ ...course, score }}
         scoreUnavailable={scoreUnavailable}

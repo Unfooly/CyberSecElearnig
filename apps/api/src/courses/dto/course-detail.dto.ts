@@ -19,6 +19,12 @@ export class CourseDetailDto {
   locales!: string[];
   /** true - kurs bez języka gracza, treść po polsku z plakietką „Available in Polish only”. */
   localeFallback!: boolean;
+  /** Quiz modułu w trybie prostym (D-207): id pytań quizu, próg i wynik ostatniego podejścia (`result.passed: false` - ekran „Powtórz quiz”). */
+  quiz!: {
+    blockIds: string[];
+    passPercent: number;
+    result: { correct: number; total: number; passPercent: number; passed: boolean; attempts: number } | null;
+  } | null;
   /** Ekran startu i końca modułu (szablon modułu, D-163): kategoria, czas, podtytuł i numer sprawy w języku treści, okładki (ścieżki
    *  zasobów; null - ciemne tło). Okładki, numer i podtytuł z module.json w obrazie API (module-meta.ts), reszta z `courses`. */
   moduleInfo!: {

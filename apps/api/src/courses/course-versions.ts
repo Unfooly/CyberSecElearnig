@@ -3,6 +3,7 @@ import { AssignmentStatus, Course, CourseAssignment, CourseVersion, Prisma } fro
 import { ContentLocale, DEFAULT_CONTENT_LOCALE, courseContentLocale, isContentLocale, localizeContent, withLegacyIds } from '@cyberszkolo/content';
 import { hashContent } from '@cyberszkolo/content/dist/node';
 import { Block } from './scoring/evaluate';
+import { readProgress } from './progress';
 
 export interface ResolvedVersion {
   id: string;
@@ -100,6 +101,9 @@ async function ensureLegacyVersion(tx: Prisma.TransactionClient, course: Course)
  */
 export async function upgradeUnstartedPin<T extends CourseAssignment & { course: Course }>(tx: Prisma.TransactionClient, assignment: T): Promise<T> {
   if (!assignment.courseVersionId || assignment.status === AssignmentStatus.COMPLETED || assignment.currentBlockIndex !== 0) return assignment;
+  // Quiz od bloku 0 (D-207, security review): pozycja 0 po porażce albo po „Powtórz quiz” to NIE „nieruszone przypisanie” - bez przepięcia,
+  // inaczej zerowanie postępu skasowałoby stan quizu (podejścia, niezaliczony).
+  if (readProgress(assignment.progress).quiz) return assignment;
   const latest = await tx.courseVersion.findFirst({ where: { courseId: assignment.courseId }, orderBy: { version: 'desc' }, select: { id: true } });
   if (!latest || latest.id === assignment.courseVersionId) return assignment;
   const moved = await tx.courseAssignment.updateMany({

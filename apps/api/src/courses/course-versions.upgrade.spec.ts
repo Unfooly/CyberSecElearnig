@@ -50,6 +50,19 @@ describe('upgradeUnstartedPin (D-177)', () => {
     }
   });
 
+  it('D-207: blok 0 ze stanem quizu (porażka albo „Powtórz quiz” przy quizie od bloku 0) - bez przepięcia i bez czyszczenia postępu', async () => {
+    for (const quiz of [
+      { attempts: 1, failed: true, correct: 0, total: 1 },
+      { attempts: 1, failed: false, correct: 0, total: 0 },
+    ]) {
+      const assignment = { ...(base as object), progress: { v: 2, blocks: {}, notes: [], quiz } } as never;
+      const t = tx('v2');
+      expect(await upgradeUnstartedPin(t as never, assignment)).toBe(assignment);
+      expect(t.courseVersion.findFirst).not.toHaveBeenCalled();
+      expect(t.courseAssignment.updateMany).not.toHaveBeenCalled();
+    }
+  });
+
   it('wyścig (count 0 - równoległy /start już przepiął): odczyt wiersza ponownie, obowiązuje wersja z bazy, nie nieaktualny obiekt', async () => {
     const raced = tx('v2', 0);
     const result = (await upgradeUnstartedPin(raced as never, base)) as { courseVersionId: string };

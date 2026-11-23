@@ -13,6 +13,7 @@ import type {
   CourseProgressResponse,
   EvidenceSummary,
   LastResult,
+  QuizResultView,
   SceneExploration,
 } from '@/lib/courses-types';
 import { LOCAL_CONTENT_BASE, contentAssetUrl } from '@/lib/content-assets';
@@ -41,6 +42,7 @@ import NarrationBar from './player/NarrationBar';
 import { NarrationPauseProvider } from './player/narration-pause';
 import { useNarrationBar } from './player/useNarrationBar';
 import ReviewBlock from './player/ReviewBlock';
+import QuizFailedScreen from './player/QuizFailedScreen';
 import { NotesProvider, notebookTasks, useNotes, type NotebookTask } from './player/notes';
 import { EvidenceProvider, hasEvidence } from './player/evidence';
 import { DEFAULT_HINT, HintProvider, useHints } from './player/hints';
@@ -90,6 +92,8 @@ interface RenderContext {
   caseNo?: string;
   /** Bloki modułu (omówienie ANNOTATED_REPLAY czyta transkrypcję z bloku CALL_RECORDING, D-115). */
   blocks: ContentBlock[];
+  /** Id pytań quizu modułu (D-207, /start) - numeracja „Pytanie N z M”; brak (starsze API) - wszystkie pytania. */
+  quizBlockIds?: string[];
   /** Przesłuchanie (D-118): liczby dowodów z serwera po trafionym podważeniu (przed zapisem bloku). */
   onEvidence: (summary: EvidenceSummary) => void;
   /** Ustawienie konta „Bez limitów czasu” (D-124) - rozmowa na żywo bez limitu i bez przełącznika. */
@@ -187,10 +191,11 @@ function renderBlockContent(block: ContentBlock, ctx: RenderContext) {
         />
       );
     case 'QUIZ': {
-      // „Pytanie N z M” nad pytaniem na ekranie monitora (D-164): numer wśród pytań QUIZ modułu.
-      const quizzes = (ctx.blocks ?? []).filter((item) => item.type === 'QUIZ');
-      const position = quizzes.findIndex((item) => item.id === block.id);
-      const questionLabel = position >= 0 ? `Pytanie ${position + 1} z ${quizzes.length}` : undefined;
+      // „Pytanie N z M” nad pytaniem na ekranie monitora (D-164): numer wśród pytań QUIZU modułu (D-207 - ciąg pytań przed raportem z
+      // /start; pytanie w środku historii bez numeru). Starsze API bez `quiz` - numer wśród wszystkich pytań, jak dotąd.
+      const quizIds = ctx.quizBlockIds ?? (ctx.blocks ?? []).filter((item) => item.type === 'QUIZ').map((item) => item.id);
+      const position = quizIds.indexOf(block.id ?? '');
+      const questionLabel = position >= 0 ? `Pytanie ${position + 1} z ${quizIds.length}` : undefined;
       if (ctx.simpleMode && block.multiple === true) {
         // Wielokrotny wybór (D-158): zbiór przez /check, zapis po „Sprawdź” (D-204) bez odpowiedzi (wynik z próby w postępie).
         return (
@@ -456,6 +461,12 @@ export default function CoursePlayer({
   // "Rozpocznij od nowa" na ekranie podsumowania (D-069, B-091) - przycisk jest teraz dolnym paskiem PlayerStage
   // (miejsce "Wstecz"), logika zostaje tu (feat/player-stage: przeniesiona z dawnego SummaryScreen.tsx).
   const [restarting, setRestarting] = useState(false);
+  // Quiz niezaliczony (D-207): z /start (odświeżenie strony) albo z zapisu ostatniego pytania - ekran wyniku i „Powtórz quiz” w pasku.
+  const [quizFailed, setQuizFailed] = useState<QuizResultView | null>(() =>
+    initial.quiz?.result && !initial.quiz.result.passed ? initial.quiz.result : null,
+  );
+  const [retryingQuiz, setRetryingQuiz] = useState(false);
+  const [retryQuizError, setRetryQuizError] = useState(false);
   const [restartError, setRestartError] = useState(false);
   // Gotowość bieżącego bloku eksploracyjnego do "Dalej" w pasku powłoki (wymagane elementy pokryte) - funkcja, którą
   // "Dalej" wywoła zamiast osobnego "Kontynuuj" wewnątrz bloku (raport z pierwszego przejścia modułu 1). null = jeszcze
@@ -501,9 +512,12 @@ export default function CoursePlayer({
     }
     if (isSummaryMode) {
       summaryHeadingRef.current?.focus();
+    } else if (quizFailed && viewIndex === null) {
+      // Ekran „Quiz niezaliczony” (D-207) sam przenosi fokus na swój nagłówek (także po powrocie z „Wstecz”) - bez nadpisywania go tutaj.
     } else {
       headingRef.current?.focus();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- jak dotąd: fokus tylko przy zmianie bloku/wyniku/podsumowania.
   }, [displayedIndex, feedback, isSummaryMode]);
 
   const hasAudio = (index: number) =>
@@ -734,6 +748,8 @@ export default function CoursePlayer({
       if (progress.notes && progress.notes.length > 0) setServerNotes(progress.notes);
       if (progress.evidence) setEvidence(progress.evidence);
       setReward(progress.gamification);
+      // Ostatnie pytanie quizu (D-207): poniżej progu - ekran „Quiz niezaliczony” (pozycja z serwera bez zmian).
+      if (progress.quiz) setQuizFailed(progress.quiz.passed ? null : progress.quiz);
       setState({
         status: progress.status,
         currentBlockIndex: progress.currentBlockIndex,
@@ -766,6 +782,11 @@ export default function CoursePlayer({
   }
 
   function goForward() {
+    // Quiz niezaliczony (D-207): akcja paska to „Powtórz quiz”.
+    if (quizFailed && viewIndex === null) {
+      void retryQuiz();
+      return;
+    }
     // Wynik bloku ocenianego (D-106): „Dalej” w pasku zamiast przycisku pod wynikiem.
     if (feedback) {
       continueAfterFeedback();
@@ -786,6 +807,32 @@ export default function CoursePlayer({
     quietBriefingSteps();
     setAutoPlayFor(hasAudio(viewIndex) ? keyOf(next) : null);
     setViewIndex(next >= state.currentBlockIndex ? null : next);
+  }
+
+  // „Powtórz quiz” (D-207): serwer czyści odpowiedzi quizu i cofa pozycję na jego pierwsze pytanie; router.refresh() pobiera świeże /start -
+  // stan quizu (i zwykle currentBlockIndex) w kluczu w page.tsx zmienia się, więc odtwarzacz się przemontowuje (czysty stan pytań, bez wyniku).
+  async function retryQuiz() {
+    if (retryingQuiz) return;
+    setRetryingQuiz(true);
+    setRetryQuizError(false);
+    try {
+      const response = await fetch(`/api/courses/${courseId}/quiz/retry`, { method: 'POST' });
+      if (response.status === 401) {
+        router.push('/login');
+        return;
+      }
+      if (!response.ok) {
+        setRetryQuizError(true);
+        setRetryingQuiz(false);
+        // 409 - stan na serwerze inny niż tutaj (np. powtórka z innej karty): świeże /start.
+        if (response.status === 409) router.refresh();
+        return;
+      }
+      router.refresh();
+    } catch {
+      setRetryQuizError(true);
+      setRetryingQuiz(false);
+    }
   }
 
   // "Rozpocznij od nowa" (D-069, B-091): archiwizuje to przypisanie i tworzy nowe (POST .../restart), potem
@@ -860,7 +907,10 @@ export default function CoursePlayer({
   const contentLayout: 'scene' | 'slide' | 'fill' | 'feature' =
     isSummaryMode && closingBlock
       ? 'fill'
-      : monitorFeedback
+      : // Ekran „Quiz niezaliczony” (D-207) - zwykły slajd (przewijany), nie układ monitora pytania pod spodem.
+        quizFailed && !reviewing
+        ? 'slide'
+        : monitorFeedback
         ? 'scene'
         : isSummaryMode || (showingFeedback && !boardFeedback)
       ? 'slide'
@@ -929,6 +979,9 @@ export default function CoursePlayer({
         nextCourse={nextCourse}
       />
     );
+  } else if (quizFailed && !reviewing) {
+    // Quiz niezaliczony (D-207): wynik i próg, „Powtórz quiz” w pasku; „Wstecz” nadal pozwala obejrzeć pytania i wyjaśnienia.
+    stage = <QuizFailedScreen result={quizFailed} error={retryQuizError} />;
   } else if (showingFeedback) {
     const answered = blocks[feedback.blockIndex];
     const answeredResult = results[feedback.blockId ?? blockIdOf(blocks, feedback.blockIndex)];
@@ -1018,6 +1071,7 @@ export default function CoursePlayer({
               onRetry: () => setError(null),
               simpleMode,
               blocks,
+              quizBlockIds: initial.quiz?.blockIds,
               onEvidence: setEvidence,
               onExplore: saveExploration,
               // Ten sam gest co autostart lektora (Start na ekranie startu, „Dalej” z bloku z nagraniem) - film po Start gra od razu
@@ -1063,7 +1117,8 @@ export default function CoursePlayer({
     !isSummaryMode && !showingFeedback && currentBlock && STEPPED_TYPES.has(currentBlock.type)
       ? (briefingSteps[`${reviewing ? 'r' : 'l'}-${keyOf(displayedIndex)}`] ?? { index: 0, gesture: false })
       : null;
-  const narration = briefingStep ? stepNarration(currentBlock, briefingStep.index) : narrationBlock?.narration;
+  // Ekran „Quiz niezaliczony” (D-207) - bez narracji ostatniego pytania (blok pod spodem nie jest pokazywany).
+  const narration = quizFailed && !reviewing ? undefined : briefingStep ? stepNarration(currentBlock, briefingStep.index) : narrationBlock?.narration;
   const narrationBarState = useNarrationBar({
     narration,
     contentBase,
@@ -1185,7 +1240,8 @@ export default function CoursePlayer({
             lang={contentLocale}
             // Stała podpowiedź: `tip` (D-096), dla starszych wersji treści `mascot.text` (poza ignorowana, D-093); bez niej - domyślna dla typu.
             idleHint={
-              currentBlock && !showingFeedback && !isSummaryMode
+              // Ekran „Quiz niezaliczony” (D-207) - bez podpowiedzi pytania pod spodem.
+              currentBlock && !showingFeedback && !isSummaryMode && !(quizFailed && !reviewing)
                 ? (currentBlock.tip ?? currentBlock.mascot?.text ?? DEFAULT_HINT[currentBlock.type])
                 : undefined
             }
@@ -1227,18 +1283,26 @@ export default function CoursePlayer({
             // dalej, tylko zgłaszają gotowość (onReady) po akcji w bloku (sprawdzenie, obejrzenie, podejście do drzwi, ostatni krok
             // odprawy); wynik bloku ocenianego (feedback) - „Dalej” od razu aktywny.
             canForward={
-              (reviewing || showingFeedback || (activeBarAction ? activeBarAction.enabled : readySubmit !== null)) && !submitting
+              // Quiz niezaliczony (D-207): „Powtórz quiz” aktywny, dopóki powtórka nie ruszyła.
+              quizFailed && !reviewing
+                ? !retryingQuiz
+                : (reviewing || showingFeedback || (activeBarAction ? activeBarAction.enabled : readySubmit !== null)) && !submitting
             }
             // Puls i ogłoszenie „możesz przejść dalej” tylko przy gotowości i wyniku - nie w podglądzie „Wstecz” (B-126).
             announceForward={!reviewing}
             // Akcja bloku w pasku (D-187): bez skrótu Enter/→, pulsu i ogłoszenia „możesz przejść dalej” - odpowiedź wysyła tylko klik.
-            forwardShortcut={!activeBarAction}
+            // „Powtórz quiz” (D-207) też tylko klikiem - przypadkowe Enter/→ nie czyści odpowiedzi quizu.
+            forwardShortcut={!activeBarAction && !(quizFailed && !reviewing)}
             backLabel={isSummaryMode ? (restarting ? 'Uruchamianie od nowa…' : 'Rozpocznij od nowa') : undefined}
             // Etykieta zmienia się tylko tam, gdzie „Dalej” kończy sprawę (SUMMARY) albo jest wyjściem z modułu (ekran zamknięcia -
             // prawdziwy link do biblioteki; pod raportem zostaje tylko „Następna sprawa”).
             forwardLabel={
               isSummaryMode
                 ? 'Wróć do biblioteki'
+                : quizFailed && !reviewing
+                  ? retryingQuiz
+                    ? 'Uruchamianie quizu…'
+                    : 'Powtórz quiz'
                 : activeBarAction
                   ? activeBarAction.label
                 : !showingFeedback && !reviewing && currentBlock?.type === 'SUMMARY' && !autoCloseSummary

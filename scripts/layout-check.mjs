@@ -2938,6 +2938,33 @@ try {
         if (errors.length > 0) fail(`${label}: (q6) błędy: ${errors.join(' | ')}`);
         step(`${label}: (q1-q6${testCase.illustration ? ', q7' : ''}) ${wide ? 'ekran na białym prostokącie monitora' : 'karta w ramce'}, bez przewijania strony, tekst ≥ 16 px, A/B/C i „Sprawdź” ≥ 44 px, ✕ i poprawne ✓, zdanie w ekranie, „Dalej” OK`, true);
       }
+      // (q9) Quiz niezaliczony (D-207, `?quizFailed=1`): ekran wyniku w obszarze bloku bez przewijania strony, tekst ≥ 16 px, w pasku
+      // „Powtórz quiz” (aktywny, ≥ 44 px), bez narracji pytania w pasku.
+      {
+        const label = `${viewport.name} / quiz niezaliczony / najlatwiejsze-drzwi`;
+        errors.length = 0;
+        await page.goto(`${WEB}/dev/player-harness?module=najlatwiejsze-drzwi&block=poza-biurem&quizFailed=1`);
+        await page.getByTestId('quiz-failed').waitFor({ timeout: 30000 });
+        const f = await page.evaluate(() => {
+          const area = document.querySelector('[data-testid="player-content-area"]').getBoundingClientRect();
+          const box = document.querySelector('[data-testid="quiz-failed"]').getBoundingClientRect();
+          const next = document.querySelector('.pbar-next');
+          const fonts = [...document.querySelectorAll('[data-testid="quiz-failed"] p, [data-testid="quiz-failed"] h2')].map((el) => parseFloat(getComputedStyle(el).fontSize));
+          return {
+            inside: box.top >= area.top - 1 && box.bottom <= area.bottom + 1,
+            minFont: Math.min(...fonts),
+            next: { text: next?.textContent?.trim(), disabled: next?.disabled, height: next?.getBoundingClientRect().height },
+            pageScroll: [document.documentElement.scrollWidth - innerWidth, document.documentElement.scrollHeight - innerHeight],
+          };
+        });
+        if (!f.inside) fail(`${label}: (q9) ekran wyniku poza obszarem bloku.`);
+        if (f.minFont < 15.9) fail(`${label}: (q9) tekst ${f.minFont}px < 16px.`);
+        if (f.next.text !== 'Powtórz quiz' || f.next.disabled || f.next.height < 43.5) fail(`${label}: (q9) przycisk w pasku: ${JSON.stringify(f.next)}.`);
+        if (f.pageScroll.some((v) => v > 1)) fail(`${label}: (q9) przewija się strona (${f.pageScroll}).`);
+        if (errors.length > 0) fail(`${label}: (q9) błędy: ${errors.join(' | ')}`);
+        await shot(page, `${viewport.name}-quiz-niezaliczony`);
+        step(`${label}: (q9) wynik i próg w obszarze bloku, tekst ≥ 16 px, „Powtórz quiz” w pasku, bez przewijania strony`, true);
+      }
       // (q8) Ilustracja obok tekstu (NARRATIVE, D-200, układ D-205): wczytana, ≥ 60 px, w oknie; na komputerze tekst Z LEWEJ i ilustracja
       // z prawej (co najmniej połowa szerokości obszaru treści), na telefonie tekst pod ilustracją; tekst ≥ 16 px; bez przewijania strony.
       {

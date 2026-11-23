@@ -10,4 +10,5 @@ export * from './blocks';
 export * from './module';
 export * from './client';
 export * from './introspect';
+export * from './quiz';
 // Fixtury testowe: jawnie przez `@cyberszkolo/content/dist/fixtures` (nie w indeksie - to nie jest API produkcyjne).

@@ -1444,6 +1444,9 @@ function simpleModeErrors(contentModule: ResolvedModule): string[] {
         if (all.length > SIMPLE_MAX_HOTSPOTS) errors.push(`${where}: hotspots: tryb prosty - najwyżej ${SIMPLE_MAX_HOTSPOTS} cele (jest ${all.length})`);
         // Bez `tip` odtwarzacz pokazałby domyślną podpowiedź sceny - dwa zdania (player/hints.tsx DEFAULT_HINT).
         if (block.tip === undefined) errors.push(`${where}: tip: tryb prosty - scena wymaga własnego polecenia (jedno zdanie)`);
+        // Karty obracane (D-209, B-187): celem jest cała karta (przycisk na pół obszaru bloku, layout-check q10), a prostokąty x/y/w/h służą
+        // tylko starszemu odtwarzaczowi - reguła celu dotykowego sceny ich nie dotyczy.
+        if (block.presentation === 'flipCards') break;
         block.hotspots.forEach((h, i) => {
           errors.push(...touchTargetErrors(`${where}: hotspots[${i}] (${h.id})`, h, SIMPLE_SCENE_REF.landscape));
           // Scena zagnieżdżona (np. ekran telefonu) jest mniejsza niż scena główna (zbliżenie z marginesem) - własna scena odniesienia, a przy

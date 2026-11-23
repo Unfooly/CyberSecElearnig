@@ -45,6 +45,8 @@ export default function FlipCardsBlock({ block, contentBase, onSubmit, onReady, 
   const [{ visited, noted }, setState] = useState(() => restored(hotspots, initial));
   // Karty obejrzane wcześniej (powrót do modułu) leżą odwrócone - gracz widzi, co już przeczytał.
   const [flipped, setFlipped] = useState<string[]>(() => (review ? [] : restored(hotspots, initial).visited));
+  // Karty, których ilustracja się nie wczytała (B-187) - przód z podpisem.
+  const [failedImages, setFailedImages] = useState<string[]>([]);
   // Blokada synchroniczna przed podwójnym zebraniem dowodu (podwójny klik w tej samej klatce; API odrzuca duplikat).
   const takenRef = useRef<Set<string>>(new Set());
 
@@ -114,9 +116,21 @@ export default function FlipCardsBlock({ block, contentBase, onSubmit, onReady, 
                 >
                   <span className="flip-card-inner">
                     <span className="flip-card-face flip-card-front" aria-hidden={isFlipped}>
-                      {src && (
+                      {src && !failedImages.includes(hotspot.id) ? (
                         // eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL (CSP img-src), bez optymalizatora Next
-                        <img src={src} alt="" referrerPolicy="no-referrer" className="h-full w-full object-cover" data-testid="flip-card-image" />
+                        <img
+                          src={src}
+                          alt=""
+                          referrerPolicy="no-referrer"
+                          className="h-full w-full object-cover"
+                          data-testid="flip-card-image"
+                          onError={() => setFailedImages((list) => (list.includes(hotspot.id) ? list : [...list, hotspot.id]))}
+                        />
+                      ) : (
+                        // Brak ilustracji (zła ścieżka, błąd wczytania, B-187): przód z podpisem zamiast pustego ciemnego pola.
+                        <span className="flex h-full w-full items-center justify-center p-4 text-center text-lg font-semibold text-white" data-testid="flip-card-fallback">
+                          {hotspot.label}
+                        </span>
                       )}
                       <span className="absolute bottom-2 right-2 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-indigo-700 shadow">
                         <RotateCcw className="h-5 w-5" aria-hidden="true" />

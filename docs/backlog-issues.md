@@ -877,6 +877,12 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
   `overflow-y: auto` i `border-radius`). (4) Reguła trybu prostego „cel ≥ 44×44” liczy się na prostokątach `x/y/width/height`, które w trybie
   kart służą tylko starszemu odtwarzaczowi - można ją pominąć dla `flipCards`.
 - Akceptacja: q10 `xx` zielony na telefonie albo świadoma decyzja (wpis tutaj); pozostałe punkty zrobione albo odrzucone.
+- **Stan 2026-11-23 (`fix/187-karty-obracane`):** (1) q10 w `xx` działa na komputerze (1920x1080, 1366x768 - OK); na telefonie
+  odwrocie w `xx` się nie mieści (844x390: +49 px; telefony w pionie 390x844, 360x800, 360x740 - niezmierzone, przy węższych kartach
+  zapewne gorzej), więc tam q10 `xx` jest wyłączone - **przed wersją EN modułu 4** decyzja: krótsze
+  teksty EN kart (orientacyjnie ≤ 100 znaków) albo powiększone odwrocie na telefonie; (2) zrobione - przy błędzie wczytania przód karty
+  pokazuje podpis (test); (3) otwarte - obejrzeć na iPhonie (właściciel); (4) zrobione - w trybie `flipCards` reguła celu 44×44 px trybu
+  prostego jest pomijana (test w `simple-mode.spec`).
 
 ### B-186 Scena ze zdjęciami (D-208) - m9 i dopasowanie tytułów
 - Etykiety: `P3`, `test`, `content` · Źródło: code review D-208

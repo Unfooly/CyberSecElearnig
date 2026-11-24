@@ -9,8 +9,8 @@
     },
     "module#cover.start": {
       "original": "images/start.webp",
-      "hash": "2506a894",
-      "key": "assets/na-skroty/images/start.2506a894.webp"
+      "hash": "b1ea3ceb",
+      "key": "assets/na-skroty/images/start.b1ea3ceb.webp"
     },
     "module#cover.end": {
       "original": "images/koniec.webp",
@@ -19,8 +19,8 @@
     },
     "module#cover.startPortrait": {
       "original": "images/start-pion.webp",
-      "hash": "18c7645f",
-      "key": "assets/na-skroty/images/start-pion.18c7645f.webp"
+      "hash": "d4076802",
+      "key": "assets/na-skroty/images/start-pion.d4076802.webp"
     },
     "module#cover.endPortrait": {
       "original": "images/koniec-pion.webp",

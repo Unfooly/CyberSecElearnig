@@ -324,6 +324,8 @@ export interface ContentBlock {
   multiple?: boolean;
   /** NARRATIVE / QUIZ: ilustracja obok tekstu albo pytania (D-200) - komputer z lewej, telefon nad treścią. */
   illustration?: { image: string; alt: string };
+  /** NARRATIVE: ilustracja na cały obszar bloku, tekst na półprzezroczystym panelu (D-210). */
+  illustrationLayout?: 'cover';
   // SWIPE_SORT (D-132): karty-wiadomości (id nieprzejrzyste, przetasowane przez serwer).
   cards?: SwipeCard[];
   /** SWIPE_SORT (D-151): własne etykiety werdyktów; brak - „Podejrzane” / „W porządku”. */

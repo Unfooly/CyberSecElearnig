@@ -59,6 +59,68 @@ describe('Illustrated (D-200)', () => {
     expect(screen.getByRole('img').className).not.toContain('monitor-illustrated-img');
   });
 
+  it('D-210: wariant „cover” - grafika na cały obszar (object-cover), treść na półprzezroczystym panelu na grafice', () => {
+    render(
+      <Illustrated illustration={illustration} contentBase={BASE} feature cover>
+        <p>Treść</p>
+      </Illustrated>,
+    );
+    const wrapper = screen.getByTestId('illustrated');
+    expect(wrapper).toHaveAttribute('data-variant', 'cover');
+    const img = within(wrapper).getByRole('img', { name: illustration.alt });
+    expect(img).toHaveAttribute('src', `${BASE}/${illustration.image}`);
+    expect(img.className).toContain('object-cover');
+    expect(img.className).toContain('absolute');
+    const panel = screen.getByTestId('illustration-panel');
+    expect(within(panel).getByText('Treść')).toBeInTheDocument();
+    // Jednolite, lekko przezroczyste tło panelu i własne przewijanie długiego tekstu.
+    expect(panel.className).toContain('bg-[#1b1a24]/80');
+    expect(panel.className).toContain('overflow-y-auto');
+    // Przewijanie z klawiatury: panel jest regionem z fokusem.
+    expect(panel).toHaveAttribute('tabindex', '0');
+    expect(screen.getByRole('region', { name: illustration.alt })).toBe(panel);
+  });
+
+  it('D-210: wariant „cover” ze złą ścieżką grafiki - bez obrazu, ale treść dalej na ciemnym panelu (jasny tekst czytelny)', () => {
+    render(
+      <Illustrated illustration={{ image: 'https://evil.example/x.png', alt: 'x' }} contentBase={BASE} cover panelLabel="Tabela na jutro">
+        <p>Treść</p>
+      </Illustrated>,
+    );
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+    expect(screen.getByTestId('illustrated')).toHaveAttribute('data-variant', 'cover');
+    expect(within(screen.getByRole('region', { name: 'Tabela na jutro' })).getByText('Treść')).toBeInTheDocument();
+  });
+
+  it('D-210: odtwarzacz - NARRATIVE z illustrationLayout „cover” na cały obszar (układ fill), bez niego - układ „feature”', () => {
+    const { unmount } = render(
+      <CoursePlayer
+        courseId="c1"
+        contentBase={BASE}
+        narrationEnabled={false}
+        showStartScreen={false}
+        initial={course([
+          { type: 'NARRATIVE', id: 'n1', title: 'Tabela na jutro', text: 'Bartek ma do rana przerobić tabelę.', illustration, illustrationLayout: 'cover' },
+        ] as CoursePlayerInitialState['contentBlocks'])}
+      />,
+    );
+    expect(screen.getByTestId('illustrated')).toHaveAttribute('data-variant', 'cover');
+    expect(within(screen.getByTestId('illustration-panel')).getByText('Tabela na jutro')).toBeInTheDocument();
+    expect(screen.getByTestId('player-content-area').className).toContain('overflow-clip');
+    unmount();
+    render(
+      <CoursePlayer
+        courseId="c1"
+        contentBase={BASE}
+        narrationEnabled={false}
+        showStartScreen={false}
+        initial={course([{ type: 'NARRATIVE', id: 'n1', title: 'Tabela na jutro', text: 'Bartek ma do rana przerobić tabelę.', illustration }] as CoursePlayerInitialState['contentBlocks'])}
+      />,
+    );
+    expect(screen.getByTestId('illustrated')).toHaveAttribute('data-variant', 'feature');
+    expect(screen.queryByTestId('illustration-panel')).not.toBeInTheDocument();
+  });
+
   it('niebezpieczna ścieżka obrazu (adres z zewnątrz) - bez grafiki, sama treść', () => {
     render(
       <Illustrated illustration={{ image: 'https://evil.example/x.png', alt: 'x' }} contentBase={BASE}>

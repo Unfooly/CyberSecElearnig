@@ -19,6 +19,8 @@ const TECHNICAL_KEYS = new Set([
   'align', 'role', 'slot', 'speaker', 'channel', 'stamp', 'note', 'time',
   // Tryb kart obracanych SCENE_HOTSPOTS (D-209, 'flipCards' - camelCase nie łapie się na wzorzec id).
   'presentation',
+  // Ilustracja na cały obszar NARRATIVE (D-210, 'cover').
+  'illustrationLayout',
   // Adresy e-mail w makiecie maila (EMAIL_ANALYSIS, moduł 1 od D-176) - nie tłumaczy się ich.
   'fromAddress', 'to',
 ]);

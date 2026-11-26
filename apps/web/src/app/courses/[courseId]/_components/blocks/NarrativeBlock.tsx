@@ -32,21 +32,33 @@ export default function NarrativeBlock({
 
   // Ekran z ilustracją (D-205, jak w nagraniach): duży tytuł w kolorze marki i większy tekst obok dużej ilustracji.
   const featured = Boolean(block.illustration) && !review;
+  // Ilustracja na cały obszar (D-210): tekst na grafitowym panelu - jasny tytuł (fiolet marki rozjaśniony) i biały tekst.
+  const onPhoto = featured && block.illustrationLayout === 'cover';
   return (
     <div>
       {block.title && (
         <p
           className={
-            featured
-              ? 'mb-4 text-2xl font-extrabold leading-tight tracking-[-0.01em] text-accent-ink sm:text-[2rem]'
-              : 'mb-3 text-lg font-medium text-slate-900'
+            onPhoto
+              ? 'mb-3 text-xl font-extrabold leading-tight tracking-[-0.01em] text-[#C9C2FF] sm:text-[1.75rem]'
+              : featured
+                ? 'mb-4 text-2xl font-extrabold leading-tight tracking-[-0.01em] text-accent-ink sm:text-[2rem]'
+                : 'mb-3 text-lg font-medium text-slate-900'
           }
         >
           {block.title}
         </p>
       )}
       {block.text && (
-        <div className={featured ? 'space-y-3 text-base leading-relaxed text-slate-800 sm:text-lg' : 'space-y-2 text-slate-800'}>
+        <div
+          className={
+            onPhoto
+              ? 'space-y-3 text-base leading-relaxed text-white sm:text-lg'
+              : featured
+                ? 'space-y-3 text-base leading-relaxed text-slate-800 sm:text-lg'
+                : 'space-y-2 text-slate-800'
+          }
+        >
           <SimpleMarkdown text={block.text} />
         </div>
       )}

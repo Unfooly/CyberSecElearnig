@@ -1114,7 +1114,7 @@
 }
 /* Karty obracane (SCENE_HOTSPOTS `presentation: 'flipCards'`, D-209): karty na cały obszar bloku. Szeroki obszar (proporcja ≥ 1,2:
    komputer, telefon poziomo) - jeden rząd (`--n` kart), wąski (telefon w pionie) - dwie kolumny. Klik obraca kartę wokół osi pionowej
-   (600 ms), odwrocie z tekstem; podpis stale pod kartą (jak na nagraniu). reduced-motion: zamiana stron bez animacji. */
+   (600 ms), odwrocie z tekstem; tytuł na górze karty (przód i odwrocie). reduced-motion: zamiana stron bez animacji. */
 .flip-cards {
   container: flipcards / size;
 }
@@ -1176,7 +1176,7 @@
 }
 .flip-card-back {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   overflow-y: auto;
   padding: 16px 18px;
   transform: rotateY(180deg);
@@ -1191,14 +1191,28 @@
   font-size: max(16px, min(20px, 1.7cqw));
   line-height: 1.45;
 }
-.flip-card-label {
+/* Tytuł karty na górze (uwaga właściciela 2026-11-26 - zamiast podpisu pod kartą): na przodzie pasek na ilustracji jak panel historyjek
+   (D-210: grafit 80% z rozmyciem, biały tekst), na odwrociu - w kolorze marki nad tekstem. */
+.flip-card-title {
+  display: block;
   flex-shrink: 0;
-  margin-top: 8px;
-  text-align: center;
+  text-align: left;
   font-size: 16px;
-  font-weight: 600;
-  line-height: 1.3;
-  color: #1e1b2e;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.flip-card-front .flip-card-title {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  padding: 10px 14px;
+  color: #fff;
+  background: rgb(27 26 36 / 0.8);
+  backdrop-filter: blur(4px);
+}
+.flip-card-back .flip-card-title {
+  margin-bottom: 6px;
+  color: #6c5ce7;
 }
 /* Niskie (telefon poziomo, ~160 px) albo wąskie karty (telefon w pionie, 2 × 2): ciaśniejsze odwrocie - tekst zostaje 16 px, mniej
    marginesu i interlinii (layout-check q10: tekst odwrocia w całości na 360×740). */
@@ -1209,8 +1223,11 @@
   .flip-card-text {
     line-height: 1.3;
   }
-  .flip-card-label {
-    margin-top: 4px;
+  .flip-card-front .flip-card-title {
+    padding: 6px 10px;
+  }
+  .flip-card-back .flip-card-title {
+    margin-bottom: 4px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

@@ -76,6 +76,19 @@ describe('FlipCardsBlock (D-209)', () => {
     expect(screen.getAllByTestId('flip-card')[0]).toHaveAttribute('data-flipped', 'false');
   });
 
+  it('tytuł na górze karty (2026-11-26, zamiast podpisu pod kartą): na przodzie i na odwrociu, poza nazwą przycisku', () => {
+    setup();
+    expect(screen.getAllByTestId('flip-card-title').map((title) => title.textContent)).toEqual(['Dane firmy', 'Utrata plików']);
+    // Tytuł jest w przodzie karty (pasek na ilustracji), nie pod kartą.
+    for (const title of screen.getAllByTestId('flip-card-title')) expect(title.closest('.flip-card-front')).not.toBeNull();
+    for (const cell of screen.getAllByTestId('flip-card')) expect(cell.querySelector('.flip-card-back .flip-card-title')).not.toBeNull();
+    expect(document.querySelector('.flip-card-label')).toBeNull();
+    // Po obróceniu ✓ „obejrzane” przy tytule; nazwę i stan czytnik bierze z przycisku.
+    fireEvent.click(card('Dane firmy'));
+    expect(screen.getAllByTestId('flip-card-title')[0].querySelector('svg')).not.toBeNull();
+    expect(card('Dane firmy')).toHaveAccessibleName('Dane firmy (obejrzane)');
+  });
+
   it('pierwsze obrócenie: dowód do notatnika raz (także po obróceniu z powrotem i ponownie); „Dalej” po wszystkich wymaganych - zapis visited/noted', () => {
     const { onSubmit, onExplore, ready } = setup();
     expect(ready.current).toBeNull();

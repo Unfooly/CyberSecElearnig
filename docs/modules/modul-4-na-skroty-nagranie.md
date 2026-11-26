@@ -33,6 +33,9 @@ Nagranie właściciela `shadowit.mp4` (1:07). To moduł cudzego kursu („Niewid
 | 13 | Chmura do pracy z domu | 1 z 3 | `pliki-w-chmurze` QUIZ: Kasia |
 | 14 | „Idealnie!” | koniec | `raport` SUMMARY (trzy zasady bez zmian) + ekran końca z okienkiem nagrody (D-199) |
 
+Ekrany „ilustracja + tekst” (NARRATIVE z `illustration`) od 2026-11-26 mają `illustrationLayout: "cover"` (D-210, uwaga właściciela):
+ilustracja na cały obszar bloku, tytuł i tekst na grafitowym, lekko przezroczystym panelu u dołu.
+
 ## Grafiki
 
 Dreamina, Seedream 4.7 i2i z referencjami stylu marki. Wybór właściciela 2026-11-22: karty postaci Adam v2 i Tomek v1. Kasia to koleżanka z brandkitu, Bartek – bohater z brandkitu (jak na okładkach modułu 4).

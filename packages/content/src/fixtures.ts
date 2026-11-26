@@ -795,6 +795,8 @@ export function leakProbeBlocks(): Record<BlockType, Record<string, unknown>> {
   const illustration = { image: 'images/tabela.webp', alt: 'Pracownik przy biurku z górą danych.' };
   blocks.QUIZ.illustration = { ...illustration };
   blocks.NARRATIVE.illustration = { ...illustration };
+  // Ilustracja na cały obszar (D-210) - publiczna, czysto wizualna.
+  blocks.NARRATIVE.illustrationLayout = 'cover';
   blocks.DIALOGUE.phone = { ...(blocks.DOSSIER.phone as Record<string, unknown>) };
   const steps = blocks.BRIEFING.steps as Record<string, unknown>[];
   steps[0].alt = 'Biurko śledczego z dzwoniącym telefonem.';

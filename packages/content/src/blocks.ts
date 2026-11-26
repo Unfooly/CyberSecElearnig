@@ -361,6 +361,10 @@ const narrativeSchema = z
     text: ltext(2000),
     // Ilustracja obok tekstu (D-200): komputer - z lewej, telefon - nad tekstem.
     illustration: illustrationSchema.optional(),
+    // Ilustracja na cały obszar bloku (D-210, moduł 4 - uwaga właściciela 2026-11-26: „zdjęcie na cały ekran i napisy na zdjęciu na
+    // jednolitym, lekko przezroczystym tle”): grafika przycięta do obszaru, tytuł i tekst na grafitowym panelu u dołu. Tylko z `illustration`
+    // (semantics.ts). Czysto wizualne, publiczne.
+    illustrationLayout: z.literal('cover').optional(),
   })
   .strict();
 
@@ -1406,7 +1410,7 @@ export const FIELD_CLASSIFICATION: Record<BlockType, FieldClassification> = {
     ],
   ),
   NOTEPAD: classify(['prompt'], []),
-  NARRATIVE: classify(['text', 'illustration.image', 'illustration.alt'], []),
+  NARRATIVE: classify(['text', 'illustration.image', 'illustration.alt', 'illustrationLayout'], []),
   EMAIL_ANALYSIS: classify(
     [
       'email.fromName',

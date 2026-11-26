@@ -649,6 +649,15 @@ export function validateBlockSemantics(block: ServerBlock, schemaVersion: number
       }
       break;
     }
+    case 'NARRATIVE': {
+      // Ilustracja na cały obszar (D-210) - bez ilustracji nie ma czego rozciągać.
+      if (block.illustrationLayout === 'cover' && block.illustration === undefined) errors.push('illustrationLayout: cover wymaga illustration');
+      // Układ 'fill' (PlayerStage) nie pokazuje paska podpowiedzi - podpowiedź bloku zginęłaby po cichu (code review D-210).
+      if (block.illustrationLayout === 'cover' && (block.tip !== undefined || block.mascot !== undefined || block.reactions !== undefined)) {
+        errors.push('illustrationLayout: cover nie łączy się z tip, mascot ani reactions (podpowiedź nie byłaby widoczna)');
+      }
+      break;
+    }
     case 'SCENE_HOTSPOTS': {
       // Id i required liczone na SPŁASZCZONEJ liście (ta sama funkcja co apps/api - flattenHotspots wyżej w tym pliku).
       const outerIds = block.hotspots.map((h) => h.id);

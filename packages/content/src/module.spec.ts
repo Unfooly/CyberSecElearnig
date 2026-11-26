@@ -1570,6 +1570,32 @@ describe('wygląd okien modułu 1 (D-178): teczka, poczta w monitorze, czat, mie
     expect(errorsOf(monitor)).toMatch(/illustration: nie łączy się z frame: monitor/);
   });
 
+  it('ilustracja na cały obszar (NARRATIVE.illustrationLayout, D-210): trafia do klienta; tylko z ilustracją; tylko wartość „cover”', () => {
+    const illustration = { image: 'tabela.webp', alt: 'Bartek przy biurku z górą danych.' };
+    // Blok bez podpowiedzi (tip/mascot/reactions) - w układzie 'fill' nie byłaby widoczna (osobny przypadek niżej).
+    const ok = fullModuleForTests();
+    const okBlock = block(ok, 'NARRATIVE') as Record<string, unknown>;
+    delete okBlock.tip;
+    delete okBlock.mascot;
+    delete okBlock.reactions;
+    Object.assign(okBlock, { illustration, illustrationLayout: 'cover' });
+    expect(errorsOf(ok)).toBe('');
+    expect(toClientBlock(parseModule(ok).blocks.find((b) => b.type === 'NARRATIVE')!, testContext)).toMatchObject({ illustration, illustrationLayout: 'cover' });
+
+    const noIllustration = fullModuleForTests();
+    Object.assign(block(noIllustration, 'NARRATIVE'), { illustrationLayout: 'cover' });
+    expect(errorsOf(noIllustration)).toMatch(/illustrationLayout: cover wymaga illustration/);
+
+    const other = fullModuleForTests();
+    Object.assign(block(other, 'NARRATIVE'), { illustration, illustrationLayout: 'side' });
+    expect(errorsOf(other)).toMatch(/illustrationLayout/);
+
+    // Podpowiedź bloku w układzie 'fill' nie jest widoczna - walidacja ją odrzuca.
+    const withTip = fullModuleForTests();
+    Object.assign(block(withTip, 'NARRATIVE'), { illustration, illustrationLayout: 'cover', tip: 'Zwróć uwagę na tabelę.' });
+    expect(errorsOf(withTip)).toMatch(/illustrationLayout: cover nie łączy się z tip/);
+  });
+
   it('ekran monitora na tle zadania z domeną (TEXT_INPUT_GUIDED.backgroundScreen, D-186): tylko z tłem, w obrębie grafiki', () => {
     const url = 'https://fundacja.przyklad-online.net/rejestracja/1';
     const answer = { accept: ['przyklad-online.net'], caseSensitive: false };

@@ -124,7 +124,14 @@ function renderBlock(block: ContentBlock, ctx: RenderContext) {
   if (!block.illustration || !wraps) return content;
   return (
     // Żywy NARRATIVE - układ 'feature' (D-205: tekst z lewej, duża ilustracja z prawej); QUIZ poza trybem prostym - układ D-200.
-    <Illustrated illustration={block.illustration} contentBase={ctx.contentBase} feature={block.type === 'NARRATIVE'}>
+    // NARRATIVE z `illustrationLayout: 'cover'` (D-210) - grafika na cały obszar, tekst na panelu.
+    <Illustrated
+      illustration={block.illustration}
+      contentBase={ctx.contentBase}
+      feature={block.type === 'NARRATIVE'}
+      cover={block.type === 'NARRATIVE' && block.illustrationLayout === 'cover'}
+      panelLabel={block.title}
+    >
       {content}
     </Illustrated>
   );
@@ -947,7 +954,10 @@ export default function CoursePlayer({
               // OSINT (D-121): strona wypełnia ramkę (w pionie przewijana w bloku).
               currentBlock?.type === 'OSINT_SPOT' ||
               // Rozmowa na żywo (D-123): ekran połączenia z własnym przewijaniem transkrypcji i odpowiedziami w stopce.
-              currentBlock?.type === 'LIVE_CALL'
+              currentBlock?.type === 'LIVE_CALL' ||
+              // Ilustracja na cały obszar (D-210, moduł 4): grafika wypełnia obszar bloku, tekst przewija się w panelu na grafice.
+              // Podgląd „Wstecz” - zwykły slajd z ilustracją (ReviewBlock).
+              (!reviewing && !showingFeedback && currentBlock?.type === 'NARRATIVE' && !!currentBlock.illustration && currentBlock.illustrationLayout === 'cover')
             ? 'fill'
             : // Ekran z ilustracją (D-205, uwaga właściciela do modułu 4: „za dużo wolnego miejsca”): slajd na całą wysokość i szerokość
               // obszaru, wyśrodkowany w pionie - jak w nagraniach; przewija się jak slajd, gdy się nie mieści. Podgląd „Wstecz” - zwykły slajd.

@@ -34,7 +34,8 @@
       "illustration": {
         "image": "assets/na-skroty/images/tabela.4f854a93.webp",
         "alt": "Bartek wieczorem przy biurku, z ręką na czole; na laptopie ogromna tabela, obok sterty papierów."
-      }
+      },
+      "illustrationLayout": "cover"
     },
     {
       "id": "instalowac",
@@ -67,7 +68,8 @@
       "illustration": {
         "image": "assets/na-skroty/images/shadow-it.7309f47f.webp",
         "alt": "Laptop otoczony ikonami: chmura, czat, gwiazdka AI, pendrive, folder i kłódka; wokół ikon czerwone przerywane linie ostrzegawcze."
-      }
+      },
+      "illustrationLayout": "cover"
     },
     {
       "id": "skutki",
@@ -199,7 +201,8 @@
       "illustration": {
         "image": "assets/na-skroty/images/pracownik.7518ff0b.webp",
         "alt": "Bartek przy biurku patrzy z niepokojem na laptopa, na którego ekranie jest duża kłódka – dostęp zablokowany."
-      }
+      },
+      "illustrationLayout": "cover"
     },
     {
       "id": "dwie-drogi",
@@ -209,7 +212,8 @@
       "illustration": {
         "image": "assets/na-skroty/images/dwie-drogi.c8fe42b4.webp",
         "alt": "Adam z działu IT, w okularach i musztardowym kardiganie, pokazuje tablicę: z lewej programy z zielonymi znacznikami, z prawej formularz zgłoszenia."
-      }
+      },
+      "illustrationLayout": "cover"
     },
     {
       "id": "prywatny-telefon",
@@ -219,7 +223,8 @@
       "illustration": {
         "image": "assets/na-skroty/images/prywatny-telefon.64ff06a1.webp",
         "alt": "Prywatny telefon w kolorowym etui leży przed firmowym monitorem; na ekranie symbol Wi-Fi i tarcza ze znakiem zapytania."
-      }
+      },
+      "illustrationLayout": "cover"
     },
     {
       "id": "cala-naprzod",
@@ -229,7 +234,8 @@
       "illustration": {
         "image": "assets/na-skroty/images/cala-naprzod.13d91db5.webp",
         "alt": "Bartek przy biurku, na laptopie dokument z dużym zielonym znacznikiem; obok stoi Adam z działu IT z uniesionym kciukiem."
-      }
+      },
+      "illustrationLayout": "cover"
     },
     {
       "id": "czas-na-quiz",
@@ -239,7 +245,8 @@
       "illustration": {
         "image": "assets/na-skroty/images/quiz-start.da23c402.webp",
         "alt": "Adam z działu IT z tabletem w ręce, obok duży fioletowy znak zapytania."
-      }
+      },
+      "illustrationLayout": "cover"
     },
     {
       "id": "bez-sprawdzenia",

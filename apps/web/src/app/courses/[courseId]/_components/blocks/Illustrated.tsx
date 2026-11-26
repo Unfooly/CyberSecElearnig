@@ -14,6 +14,8 @@ export default function Illustrated({
   contentBase,
   screen = false,
   feature = false,
+  cover = false,
+  panelLabel,
   children,
 }: {
   illustration?: { image: string; alt: string };
@@ -28,10 +30,51 @@ export default function Illustrated({
    * wysokości okna). Bez tej flagi (podgląd „Wstecz”, QUIZ poza trybem prostym) - układ D-200: ilustracja z lewej, połowa slajdu.
    */
   feature?: boolean;
+  /**
+   * Ilustracja na cały obszar bloku (NARRATIVE z `illustrationLayout: 'cover'`, D-210 - moduł 4): grafika przycięta do obszaru
+   * (`object-cover`), treść na grafitowym, lekko przezroczystym panelu u dołu (rozmycie tła pod panelem). Panel zajmuje najwyżej dolne
+   * ~2/3 obszaru (telefon w pionie ~3/4, niski ekran prawie całość) i przewija się sam, gdy tekst się nie mieści - grafika zostaje na
+   * miejscu. Układ ekranu 'fill'.
+   */
+  cover?: boolean;
+  /** Nazwa regionu panelu w wariancie `cover` (tytuł bloku) - domyślnie opis ilustracji. */
+  panelLabel?: string;
   children: ReactNode;
 }) {
   const src = illustration ? contentAssetUrl(contentBase, illustration.image, 'image') : null;
-  if (!illustration || !src) return <>{children}</>;
+  if (!illustration) return <>{children}</>;
+  if (cover) {
+    // Zła ścieżka grafiki (code review D-210): sam ciemny panel na ciemnym tle - jasny tekst bloku zostaje czytelny.
+    return (
+      <div data-testid="illustrated" data-variant="cover" className="relative h-full min-h-0 w-full flex-1 overflow-hidden rounded-card bg-[#131313]">
+        {src && (
+          // eslint-disable-next-line @next/next/no-img-element -- zasób z CONTENT_BASE_URL (CSP img-src), bez optymalizatora Next
+          <img
+            src={src}
+            alt={illustration.alt}
+            data-testid="illustration"
+            referrerPolicy="no-referrer"
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        )}
+        {/* Niski ekran (telefon w poziomie, wysokość ≤ 500 px): panel może zająć prawie całą wysokość - inaczej długi tekst przewijałby się
+            w pasku na 1/3 ekranu. */}
+        <div className="absolute inset-x-0 bottom-0 top-1/4 flex items-end p-3 sm:top-1/3 sm:p-6 [@media(max-height:500px)]:top-0 [@media(max-height:500px)]:p-3">
+          {/* Fokus i rola regionu: długi tekst przewija się w panelu także z klawiatury (Safari nie daje fokusu przewijanym kontenerom). */}
+          <div
+            data-testid="illustration-panel"
+            tabIndex={0}
+            role="region"
+            aria-label={panelLabel ?? illustration.alt}
+            className="mx-auto max-h-full w-full max-w-4xl overflow-y-auto rounded-card bg-[#1b1a24]/80 px-5 py-4 text-white shadow-lg backdrop-blur-sm [scrollbar-width:thin] sm:px-8 sm:py-6"
+          >
+            {children}
+          </div>
+        </div>
+      </div>
+    );
+  }
+  if (!src) return <>{children}</>;
   // Ekran monitora: kolumny i wysokość ilustracji w `globals.css` (`.monitor-illustrated`) - tym samym zapytaniem kontenerowym co układ
   // monitora (B-182), nie po szerokości okna: wąski obszar bloku przy szerokim oknie (844x390, tablet) to karta w ramce i jedna kolumna.
   const size = screen

@@ -131,6 +131,8 @@ describe('FlipCardsBlock (D-209)', () => {
     fireEvent.error(screen.getAllByTestId('flip-card-image')[0]);
     expect(screen.getAllByTestId('flip-card-image')).toHaveLength(1);
     expect(screen.getByTestId('flip-card-fallback')).toHaveTextContent('Dane firmy');
+    // Tytuł na przodzie raz (D-211): przy podpisie na środku bez paska tytułu; druga karta (z ilustracją) pasek ma.
+    expect(screen.getAllByTestId('flip-card-title').map((title) => title.textContent)).toEqual(['Utrata plików']);
     fireEvent.click(card('Dane firmy'));
     expect(card('Dane firmy')).toHaveAttribute('aria-pressed', 'true');
   });

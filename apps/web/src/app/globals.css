@@ -1192,7 +1192,7 @@
   line-height: 1.45;
 }
 /* Tytuł karty na górze (uwaga właściciela 2026-11-26 - zamiast podpisu pod kartą): na przodzie pasek na ilustracji jak panel historyjek
-   (D-210: grafit 80% z rozmyciem, biały tekst), na odwrociu - w kolorze marki nad tekstem. */
+   (D-210: grafit 80%, biały tekst), na odwrociu - w kolorze marki nad tekstem. */
 .flip-card-title {
   display: block;
   flex-shrink: 0;
@@ -1207,8 +1207,9 @@
   top: 0;
   padding: 10px 14px;
   color: #fff;
+  /* Bez backdrop-filter: wewnątrz obracanej ścianki (preserve-3d, backface-visibility) Safari potrafi go pokazać na odwrociu (code
+     review D-211); grafit 80% wystarcza dla kontrastu. */
   background: rgb(27 26 36 / 0.8);
-  backdrop-filter: blur(4px);
 }
 .flip-card-back .flip-card-title {
   margin-bottom: 6px;

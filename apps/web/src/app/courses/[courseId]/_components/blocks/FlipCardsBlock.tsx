@@ -134,10 +134,13 @@ export default function FlipCardsBlock({ block, contentBase, onSubmit, onReady, 
                       )}
                       {/* Tytuł na górze karty (uwaga właściciela 2026-11-26: podpis pod kartą „słabo wygląda”) - pasek na ilustracji jak
                           panel historyjek (D-210). Tylko dla oka: nazwę i stan („obejrzane”) czytnik dostaje z przycisku. */}
-                      <span className="flip-card-title" data-testid="flip-card-title">
-                        {seen && !review && <Check className="mr-1 inline h-4 w-4 text-emerald-400" aria-hidden="true" />}
-                        {hotspot.label}
-                      </span>
+                      {/* Bez ilustracji (B-187) tytuł stoi już na środku przodu - bez paska, żeby nie był dwa razy. */}
+                      {src && !failedImages.includes(hotspot.id) && (
+                        <span className="flip-card-title" data-testid="flip-card-title">
+                          {seen && !review && <Check className="mr-1 inline h-4 w-4 text-emerald-400" aria-hidden="true" />}
+                          {hotspot.label}
+                        </span>
+                      )}
                       <span className="absolute bottom-2 right-2 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-indigo-700 shadow">
                         <RotateCcw className="h-5 w-5" aria-hidden="true" />
                       </span>

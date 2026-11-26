@@ -3039,7 +3039,8 @@ try {
             inside: rects.every((r) => r.top >= area.top - 1 && r.bottom <= area.bottom + 1 && r.left >= area.left - 1 && r.right <= area.right + 1),
             oneRow: rects.every((r) => Math.abs(r.top - rects[0].top) < 2),
             minHeight: Math.min(...rects.map((r) => r.height)),
-            labelFont: Math.min(...cells.map((cell) => parseFloat(getComputedStyle(cell.querySelector('.flip-card-label')).fontSize))),
+            // Tytuł na górze karty (przód, 2026-11-26 - zamiast podpisu pod kartą).
+            labelFont: Math.min(...cells.map((cell) => parseFloat(getComputedStyle(cell.querySelector('.flip-card-front .flip-card-title')).fontSize))),
             backs: cells.map((cell) => {
               const face = cell.querySelector('.flip-card-back');
               return { font: parseFloat(getComputedStyle(face.querySelector('[data-testid="flip-card-back"]')).fontSize), overflow: face.scrollHeight - face.clientHeight };
@@ -3053,7 +3054,7 @@ try {
         if (!c.inside) fail(`${label}: (q10) karta poza obszarem bloku.`);
         if (wideArea && !c.oneRow) fail(`${label}: (q10) szeroki ekran - karty powinny być w jednym rzędzie.`);
         if (c.minHeight < 120) fail(`${label}: (q10) karta za niska (${Math.round(c.minHeight)} px).`);
-        if (c.labelFont < 15.9) fail(`${label}: (q10) podpis ${c.labelFont}px < 16px.`);
+        if (c.labelFont < 15.9) fail(`${label}: (q10) tytuł karty ${c.labelFont}px < 16px.`);
         for (const [i, back] of c.backs.entries()) {
           if (back.font < 15.9) fail(`${label}: (q10) odwrocie karty ${i + 1}: tekst ${back.font}px < 16px.`);
           if (back.overflow > 1) fail(`${label}: (q10) odwrocie karty ${i + 1}: tekst nie mieści się (${back.overflow} px).`);
@@ -3062,7 +3063,7 @@ try {
         if (c.pageScroll.some((v) => v > 1)) fail(`${label}: (q10) przewija się strona (${c.pageScroll}).`);
         if (errors.length > 0) fail(`${label}: (q10) błędy: ${errors.join(' | ')}`);
         await shot(page, `${viewport.name}-karty-obracane${pseudo ? '-xx' : ''}`);
-        step(`${label}: (q10) 4 karty w obszarze bloku${wideArea ? ' w jednym rzędzie' : ''}, podpis i odwrocie ≥ 16 px, tekst w całości, „Dalej” po wszystkich`, true);
+        step(`${label}: (q10) 4 karty w obszarze bloku${wideArea ? ' w jednym rzędzie' : ''}, tytuł i odwrocie ≥ 16 px, tekst w całości, „Dalej” po wszystkich`, true);
       }
       await context.close();
     }

@@ -32,8 +32,8 @@ function restored(hotspots: readonly SceneHotspot[], initial: SceneExploration |
 
 /**
  * Karty obracane (SCENE_HOTSPOTS `presentation: 'flipCards'`, D-209 - jak na nagraniu „Ryzyko dla organizacji”): duże karty na cały
- * obszar bloku - przód to ilustracja (`cardImage`), podpis (`label`) stale pod kartą; klik obraca kartę o 180° (oś pionowa) i pokazuje
- * tekst (`content`) na odwrocie, drugi klik obraca z powrotem. Pierwsze obrócenie = przedmiot obejrzany, a karta-dowód trafia do notatnika
+ * obszar bloku - przód to ilustracja (`cardImage`) z tytułem (`label`) na górze karty (pasek na ilustracji); klik obraca kartę o 180°
+ * (oś pionowa) i pokazuje tytuł i tekst (`content`) na odwrocie, drugi klik obraca z powrotem. Pierwsze obrócenie = przedmiot obejrzany, a karta-dowód trafia do notatnika
  * (jak otwarcie zbliżenia w scenie, D-187). Stan bloku (`visited`/`noted`), wymagalność, „Dalej” w pasku i stan częściowy - jak w scenie.
  * Układ: szeroki obszar (komputer, telefon poziomo) - karty w jednym rzędzie; wąski - siatka 2 × 2 (`.flip-cards`, globals.css).
  * reduced-motion: bez animacji obrotu (zamiana stron od razu). A11y: karta to przycisk z `aria-pressed`, odwrocie opisuje go po obróceniu.
@@ -132,22 +132,26 @@ export default function FlipCardsBlock({ block, contentBase, onSubmit, onReady, 
                           {hotspot.label}
                         </span>
                       )}
+                      {/* Tytuł na górze karty (uwaga właściciela 2026-11-26: podpis pod kartą „słabo wygląda”) - pasek na ilustracji jak
+                          panel historyjek (D-210). Tylko dla oka: nazwę i stan („obejrzane”) czytnik dostaje z przycisku. */}
+                      <span className="flip-card-title" data-testid="flip-card-title">
+                        {seen && !review && <Check className="mr-1 inline h-4 w-4 text-emerald-400" aria-hidden="true" />}
+                        {hotspot.label}
+                      </span>
                       <span className="absolute bottom-2 right-2 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-indigo-700 shadow">
                         <RotateCcw className="h-5 w-5" aria-hidden="true" />
                       </span>
                     </span>
                     <span className="flip-card-face flip-card-back" aria-hidden={!isFlipped}>
+                      <span className="flip-card-title" aria-hidden="true">
+                        {hotspot.label}
+                      </span>
                       <span id={backId} className="flip-card-text" data-testid="flip-card-back">
                         {hotspot.content}
                       </span>
                     </span>
                   </span>
                 </button>
-                {/* Podpis i ✓ tylko dla oka: nazwę i stan („obejrzane”) czytnik dostaje z przycisku (bez dublowania). */}
-                <span className="flip-card-label" aria-hidden="true">
-                  {seen && !review && <Check className="mr-1 inline h-4 w-4 text-emerald-600" />}
-                  {hotspot.label}
-                </span>
               </li>
             );
           })}

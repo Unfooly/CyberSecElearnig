@@ -867,6 +867,22 @@ bezpieczeństwa i kodu tej serii prac. Wpisy oznaczone **(zweryfikuj)** pochodz�
 - Akceptacja: decyzja właściciela - (1) tytuły z `course_versions.title` w języku gracza i plakietka na karcie kursu; (2) lekcja per język
   szablonu/kampanii; (3) czy i kiedy tłumaczyć interfejs (CLAUDE.md: bez pełnego frameworka i18n w MVP).
 
+### B-189 Tytuł karty obracanej na górze (D-211) - wysokość paska na siatce 2×2
+- Etykiety: `P3`, `mod:odtwarzacz`, `test` · Źródło: code review D-211 (PR #212)
+- Opis: layout-check q10 sprawdza rozmiar tekstu tytułu na przodzie karty (≥ 16 px), ale nie mierzy wysokości paska z tytułem. Przy
+  układzie 2×2 (wąskie karty, telefon) dłuższy tytuł zawija się do dwóch wierszy, a pasek zasłania wtedy większą część ilustracji -
+  nic tego nie pilnuje. Dodać do q10 pomiar wysokości paska względem przodu karty (np. ≤ 30%) i sprawdzić, czy tytuł nie jest ucięty.
+- Akceptacja: q10 mierzy pasek na 2×2 (telefon w pionie i w poziomie) albo świadoma decyzja (wpis tutaj).
+
+### B-188 Ilustracja na cały ekran (D-210) - layout-check wariantu cover i brakujące testy
+- Etykiety: `P2`, `mod:odtwarzacz`, `test`, `i18n` · Źródło: code review D-210 (PR #211)
+- Opis: (1) layout-check nie ma sekcji dla `illustrationLayout: 'cover'` - ekrany historyjek modułu 4 sprawdzono przy PR ręcznie
+  (sekcja `module` i zrzuty), ale nic nie pilnuje stale: panel mieści się w obszarze bloku, tekst ≥ 16 px, ostatni wiersz długiego
+  tekstu da się przewinąć i zobaczyć, tak samo w `xx`. Dodać sekcję (np. q8b). (2) Testy jednostkowe: podgląd „Wstecz” na bloku `cover`
+  (zwykły slajd z ilustracją, bez panelu), brak układu `fill`, gdy ekran pokazuje wynik poprzedniego quizu, oraz klasy kolorów
+  tekstu w `NarrativeBlock` (tytuł i tekst na ciemnym panelu).
+- Akceptacja: sekcja layout-check zielona na 8 rozmiarach (też `xx`) i trzy testy w `apps/web`.
+
 ### B-187 Karty obracane (D-209) - pseudo-lokalizacja odwrocia i drobne uwagi z review
 - Etykiety: `P2`, `mod:odtwarzacz`, `i18n`, `test` · Źródło: code review D-209
 - Opis: (1) **przed wersją EN modułu 4:** layout-check q10 mierzy odwrocie tylko po polsku, a sekcja `pseudo` - wyłącznie nieobrócone
